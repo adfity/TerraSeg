@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+body {
+  @apply bg-white text-slate-900 dark:bg-slate-950 dark:text-white;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Tambahkan di globals.css atau di dalam tag <style> */
+.detection-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  height: 640px;
+  border: 4px solid #1378b7;
+  transform: translate(-50%, -50%);
+  pointer-events: none !important;
+  z-index: 1000;
+}
+
+.smart-mode .leaflet-container {
+  cursor: crosshair !important;
+}
+
+.leaflet-control-scale {
+  margin-left: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+.leaflet-control-scale-line {
+  font-size: 14px;
+  padding: 6px 12px;
+  border: 2px solid #000;
+  background: rgba(255,255,255,0.9);
+  font-weight: 600;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155; /* slate-700 */
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* slate-600 */
+}
+
+#home,
+#features,
+#how-it-works,
+#cta {
+  scroll-margin-top: 80px; /* header height */
+}

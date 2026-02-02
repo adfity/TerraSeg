@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerraSeo - Home</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --primary-light: #4CAF50;
+            --primary-dark: #1B5E20;
+            --secondary-color: #0288D1;
+            --accent-color: #FF9800;
+            --light-bg: #f5f5f5;
+            --dark-text: #333;
+            --light-text: #fff;
+            --gray-text: #666;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            color: var(--dark-text);
+            background-color: var(--light-bg);
+            line-height: 1.6;
+        }
+        
+        /* Header - Sama untuk publik dan user */
+        header {
+            background-color: white;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            text-decoration: none;
+        }
+        
+        .logo i {
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+        
+        .logo-text {
+            background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+        
+        .nav-links li {
+            margin-left: 25px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark-text);
+            font-weight: 600;
+            transition: var(--transition);
+            padding: 8px 0;
+            position: relative;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+        
+        .nav-links a:hover::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+        }
+        
+        /* Auth Section - Berubah setelah login */
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .btn-signin {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+        
+        .btn-signin:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .btn-signup {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-signup:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        /* Hero Section - Berubah konten setelah login */
+        .hero {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" preserveAspectRatio="none"><path d="M0,0V100H1000V0C750,50 250,50 0,0Z" fill="%23ffffff" opacity="0.2"/></svg>');
+            background-size: cover;
+            background-position: bottom;
+        }
+        
+        .hero-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-text {
+            flex: 1;
+            padding-right: 40px;
+            animation: fadeInUp 1s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero-text h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: var(--primary-dark);
+            line-height: 1.2;
+        }
+        
+        .hero-text h1 span {
+            color: var(--primary-color);
+            position: relative;
+        }
+        
+        .hero-text h1 span::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background-color: rgba(76, 175, 80, 0.2);
+            z-index: -1;
+        }
+        
+        .hero-text p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: var(--gray-text);
+            max-width: 90%;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .hero-image {
+            flex: 1;
+            text-align: center;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+        
+        .hero-image img {
+            max-width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-hover);
+            border: 8px solid white;
+        }
+        
+        /* Dashboard Content - Muncul setelah login */
+        .dashboard-content {
+            padding: 40px 0;
+            display: none;
+        }
+        
+        .welcome-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 30px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+        }
+        
+        .welcome-card h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .stat-info h3 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            color: var(--dark-text);
+        }
+        
+        .stat-info p {
+            color: var(--gray-text);
+            font-size: 0.9rem;
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .action-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-color);
+        }
+        
+        .action-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .action-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            color: var(--primary-dark);
+        }
+        
+        /* Features Section - Sama untuk publik dan user */
+        .features {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title h2 {
+            font-size: 2.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+        }
+        
+        .section-title p {
+            color: var(--gray-text);
+            max-width: 700px;
+            margin: 30px auto 0;
+            font-size: 1.2rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .feature-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 40px 30px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            text-align: center;
+            border-top: 4px solid var(--primary-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-15px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(46, 125, 50, 0.05) 0%, rgba(76, 175, 80, 0.05) 100%);
+            z-index: -1;
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            width: 80px;
+            height: 80px;
+            line-height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 25px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.6rem;
+            margin-bottom: 15px;
+            color: var(--primary-dark);
+        }
+        
+        /* Community Projects */
+        .community-projects {
+            padding: 60px 0;
+            background-color: #f9f9f9;
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+        
+        .project-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        
+        .project-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .project-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 5px;
+        }
+        
+        .project-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background-color: rgba(33, 150, 243, 0.1);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.2);
+        }
+        
+        .project-author {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .author-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .project-description {
+            margin-bottom: 20px;
+            color: var(--gray-text);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .project-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .project-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--gray-text);
+        }
+        
+        .btn-small {
+            padding: 8px 16px;
+            border-radius: 6px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+        
+        .btn-small:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        /* Footer */
+        footer {
+            background-color: #1a1a1a;
+            color: #ccc;
+            padding: 60px 0 30px;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+        
+        .footer-column {
+            flex: 1;
+            min-width: 250px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-column h3 {
+            color: white;
+            margin-bottom: 25px;
+            font-size: 1.3rem;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .footer-column h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: var(--primary-color);
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 12px;
+        }
+        
+        .footer-column ul li a {
+            color: #ccc;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+        
+        .footer-column ul li a:hover {
+            color: var(--primary-light);
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #444;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .hero-content {
+                flex-direction: column;
+            }
+            
+            .hero-text {
+                padding-right: 0;
+                margin-bottom: 40px;
+                text-align: center;
+            }
+            
+            .hero-text h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .auth-section {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .hero-text h1 {
+                font-size: 2rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .section-title h2 {
+                font-size: 2rem;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* State untuk logged in */
+        body.logged-in .public-hero {
+            display: none;
+        }
+        
+        body.logged-in .dashboard-content {
+            display: block;
+        }
+        
+        body.logged-in .auth-section .btn-signin,
+        body.logged-in .auth-section .btn-signup {
+            display: none;
+        }
+        
+        body.logged-in .auth-section .user-menu {
+            display: flex;
+        }
+        
+        body:not(.logged-in) .auth-section .user-menu {
+            display: none;
+        }
+        
+        body:not(.logged-in) .dashboard-content {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header - Sama untuk semua -->
+    <header>
+        <div class="container">
+            <nav class="navbar">
+                <a href="#home" class="logo">
+                    <i class="fas fa-globe-asia"></i>
+                    <span class="logo-text">TerraSeo</span>
+                </a>
+                
+                <ul class="nav-links">
+                    <li><a href="#home">Beranda</a></li>
+                    <li><a href="#features">Fitur</a></li>
+                    <li><a href="#projects">Proyek Publik</a></li>
+                    <li><a href="#about">Tentang</a></li>
+                </ul>
+                
+                <div class="auth-section">
+                    <!-- Tampil saat belum login -->
+                    <a href="#" class="btn btn-signin" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Masuk
+                    </a>
+                    <a href="#" class="btn btn-signup" id="signupBtn">
+                        <i class="fas fa-user-plus"></i> Daftar
+                    </a>
+                    
+                    <!-- Tampil saat sudah login -->
+                    <div class="user-menu">
+                        <div class="user-avatar" id="userAvatar">AJ</div>
+                        <a href="dashboard.html" class="btn btn-primary" style="padding: 10px 20px;">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section untuk publik -->
+    <section class="hero public-hero" id="home">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>Analisis <span>Geospasial</span> dengan Kecerdasan Buatan</h1>
+                    <p>TerraSeo menghadirkan teknologi AI untuk segmentasi citra satelit secara otomatis. Deteksi air, jalan, bangunan, dan pepohonan dengan akurasi tinggi.</p>
+                    
+                    <div class="hero-buttons">
+                        <a href="map.html" class="btn btn-primary">
+                            <i class="fas fa-map-marked-alt"></i> Coba Demo
+                        </a>
+                        <a href="#features" class="btn" style="background-color: #f5f5f5; color: var(--dark-text);">
+                            <i class="fas fa-play-circle"></i> Pelajari Fitur
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="hero-image">
+                    <img src="https://images.unsplash.com/photo-1589810264345-6d43b8a5ef42?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1172&q=80" alt="TerraSeo Map Interface">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Content untuk user yang sudah login -->
+    <section class="dashboard-content">
+        <div class="container">
+            <!-- Welcome Card -->
+            <div class="welcome-card">
+                <h2>Selamat Datang Kembali, <span id="userGreeting">Ahmad!</span></h2>
+                <p>Anda memiliki 2 proyek aktif dan 3 analisis baru yang menunggu. Mari lanjutkan eksplorasi geospasial Anda!</p>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>5</h3>
+                        <p>Proyek Aktif</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>12</h3>
+                        <p>Analisis Selesai</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-save"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>3.2 GB</h3>
+                        <p>Penyimpanan Terpakai</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>8</h3>
+                        <p>Proyek Publik Diikuti</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <h2 style="font-size: 1.8rem; color: var(--primary-dark); margin-bottom: 20px;">Aksi Cepat</h2>
+            <div class="quick-actions">
+                <div class="action-card" onclick="window.location.href='map.html'">
+                    <div class="action-icon">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <h3>Analisis Baru</h3>
+                    <p>Buat analisis AI baru dengan GeoAI TerraSeo</p>
+                </div>
+                
+                <div class="action-card" onclick="window.location.href='projects.html'">
+                    <div class="action-icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <h3>Proyek Saya</h3>
+                    <p>Kelola semua proyek dan analisis Anda</p>
+                </div>
+                
+                <div class="action-card" onclick="window.location.href='community.html'">
+                    <div class="action-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Jelajahi Komunitas</h3>
+                    <p>Temukan proyek publik dari pengguna lain</p>
+                </div>
+                
+                <div class="action-card" onclick="window.location.href='radius.html'">
+                    <div class="action-icon">
+                        <i class="fas fa-draw-circle"></i>
+                    </div>
+                    <h3>Analisis Radius</h3>
+                    <p>Analisis area dalam radius tertentu</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section - Sama untuk semua -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>Fitur TerraSeo</h2>
+                <p>Platform analisis geospasial terlengkap dengan teknologi AI terbaru</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>GeoAI Segmentasi</h3>
+                    <p>Identifikasi otomatis elemen geografis seperti air, jalan, bangunan, dan pepohonan dari citra satelit.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-draw-polygon"></i>
+                    </div>
+                    <h3>Polygon Detection</h3>
+                    <p>Hasil segmentasi divisualisasikan dalam bentuk polygon interaktif yang dapat diukur dan dianalisis.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h3>Layer Management</h3>
+                    <p>Kelola berbagai layer peta termasuk basemap, hasil AI, radius, dan lokasi Anda.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Community Projects Section -->
+    <section class="community-projects" id="projects">
+        <div class="container">
+            <div class="section-title">
+                <h2>Proyek Publik Populer</h2>
+                <p>Jelajahi proyek-proyek menarik dari komunitas TerraSeo</p>
+            </div>
+            
+            <div class="projects-grid">
+                <!-- Proyek 1 -->
+                <div class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <div class="project-title">Analisis Deforestasi Amazon</div>
+                            <span class="project-badge">Publik</span>
+                        </div>
+                    </div>
+                    <div class="project-author">
+                        <div class="author-avatar">ER</div>
+                        <div>Eco Research Team</div>
+                    </div>
+                    <div class="project-description">
+                        Analisis perubahan tutupan hutan Amazon periode 2020-2024 menggunakan data satelit resolusi tinggi.
+                    </div>
+                    <div class="project-footer">
+                        <div class="project-stats">
+                            <span><i class="fas fa-heart"></i> 124</span>
+                            <span><i class="fas fa-eye"></i> 1.2k</span>
+                        </div>
+                        <button class="btn-small">Lihat Proyek</button>
+                    </div>
+                </div>
+                
+                <!-- Proyek 2 -->
+                <div class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <div class="project-title">Urban Heat Island Jakarta</div>
+                            <span class="project-badge">Publik</span>
+                        </div>
+                    </div>
+                    <div class="project-author">
+                        <div class="author-avatar">KW</div>
+                        <div>Kota Wijaya</div>
+                    </div>
+                    <div class="project-description">
+                        Analisis efek pulau panas perkotaan di Jakarta dengan perbandingan suhu permukaan.
+                    </div>
+                    <div class="project-footer">
+                        <div class="project-stats">
+                            <span><i class="fas fa-heart"></i> 89</span>
+                            <span><i class="fas fa-eye"></i> 956</span>
+                        </div>
+                        <button class="btn-small">Lihat Proyek</button>
+                    </div>
+                </div>
+                
+                <!-- Proyek 3 -->
+                <div class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <div class="project-title">Monitoring Terumbu Karang</div>
+                            <span class="project-badge">Publik</span>
+                        </div>
+                    </div>
+                    <div class="project-author">
+                        <div class="author-avatar">MC</div>
+                        <div>Marine Conservation</div>
+                    </div>
+                    <div class="project-description">
+                        Pemantauan kesehatan terumbu karang menggunakan analisis citra satelit multispektral.
+                    </div>
+                    <div class="project-footer">
+                        <div class="project-stats">
+                            <span><i class="fas fa-heart"></i> 156</span>
+                            <span><i class="fas fa-eye"></i> 2.1k</span>
+                        </div>
+                        <button class="btn-small">Lihat Proyek</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="about">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>TerraSeo</h3>
+                    <p>Platform analisis geospasial berbasis AI untuk identifikasi dan segmentasi elemen geografis dari citra satelit.</p>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Navigasi</h3>
+                    <ul>
+                        <li><a href="#home">Beranda</a></li>
+                        <li><a href="#features">Fitur</a></li>
+                        <li><a href="#projects">Proyek Publik</a></li>
+                        <li><a href="#about">Tentang</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Bantuan</h3>
+                    <ul>
+                        <li><a href="#">Dokumentasi</a></li>
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#">Kontak</a></li>
+                        <li><a href="#">Privasi</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2023 TerraSeo. Semua hak dilindungi.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+    <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 40px; border-radius: var(--border-radius); width: 90%; max-width: 400px; box-shadow: var(--shadow-hover);">
+            <h2 style="margin-bottom: 20px; color: var(--primary-dark);">Masuk ke TerraSeo</h2>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Email</label>
+                <input type="email" id="loginEmail" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px;">
+            </div>
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Password</label>
+                <input type="password" id="loginPassword" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                <button id="cancelLogin" style="padding: 10px 20px; background: #f5f5f5; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Batal</button>
+                <button id="submitLogin" style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Masuk</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State login (dalam implementasi nyata, ini dari backend)
+        let isLoggedIn = false;
+        let currentUser = null;
+        
+        // Check localStorage for login state
+        if (localStorage.getItem('terraSeoLoggedIn') === 'true') {
+            isLoggedIn = true;
+            currentUser = JSON.parse(localStorage.getItem('terraSeoUser') || '{}');
+        }
+        
+        // Update UI based on login state
+        function updateUIForLoginState() {
+            if (isLoggedIn && currentUser) {
+                document.body.classList.add('logged-in');
+                document.getElementById('userAvatar').textContent = currentUser.initials || 'AJ';
+                document.getElementById('userGreeting').textContent = currentUser.name || 'Pengguna';
+            } else {
+                document.body.classList.remove('logged-in');
+            }
+        }
+        
+        // Initialize UI
+        updateUIForLoginState();
+        
+        // Login functionality
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const loginModal = document.getElementById('loginModal');
+        const cancelLogin = document.getElementById('cancelLogin');
+        const submitLogin = document.getElementById('submitLogin');
+        
+        loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginModal.style.display = 'flex';
+        });
+        
+        signupBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Anda akan diarahkan ke halaman pendaftaran. Setelah mendaftar, Anda dapat menyimpan hasil analisis AI Anda.');
+        });
+        
+        cancelLogin.addEventListener('click', function() {
+            loginModal.style.display = 'none';
+        });
+        
+        submitLogin.addEventListener('click', function() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            // Simple validation
+            if (!email || !password) {
+                alert('Harap isi email dan password');
+                return;
+            }
+            
+            // Simulate login (in real app, this would be an API call)
+            setTimeout(() => {
+                // Mock user data
+                currentUser = {
+                    name: 'Ahmad Jamil',
+                    email: email,
+                    initials: 'AJ'
+                };
+                
+                isLoggedIn = true;
+                
+                // Save to localStorage
+                localStorage.setItem('terraSeoLoggedIn', 'true');
+                localStorage.setItem('terraSeoUser', JSON.stringify(currentUser));
+                
+                // Update UI
+                updateUIForLoginState();
+                
+                // Close modal
+                loginModal.style.display = 'none';
+                
+                // Show welcome message
+                alert(`Selamat datang kembali, ${currentUser.name}!`);
+                
+                // Scroll to dashboard section
+                document.querySelector('.dashboard-content').scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+        });
+        
+        // Logout functionality (in dashboard)
+        function logout() {
+            isLoggedIn = false;
+            currentUser = null;
+            
+            // Clear localStorage
+            localStorage.removeItem('terraSeoLoggedIn');
+            localStorage.removeItem('terraSeoUser');
+            
+            // Update UI
+            updateUIForLoginState();
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            alert('Anda telah berhasil keluar.');
+        }
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target === loginModal) {
+                loginModal.style.display = 'none';
+            }
+        });
+        
+        // Smooth scroll for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Demo: Auto-login for testing
+        setTimeout(() => {
+            // Comment this out for production
+            // autoLoginDemo();
+        }, 1000);
+        
+        function autoLoginDemo() {
+            console.log('Demo mode: Click login button to simulate user login');
+        }
+    </script>
+</body>
+</html>

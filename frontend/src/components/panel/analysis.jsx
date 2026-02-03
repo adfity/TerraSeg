@@ -50,6 +50,7 @@ export default function AnalysisPanel() {
     setAnalysisResults(null);
     setCsvFile(null);
     setSelectedCategory('all');
+    setIsAnalyzing(false); // TAMBAHKAN INI
     if (fileInputRef.current) fileInputRef.current.value = '';
     toast.success('Analisis direset');
   };
@@ -69,13 +70,17 @@ export default function AnalysisPanel() {
     }
 
     setIsAnalyzing(true);
-    toast.loading('Menganalisis data pendidikan...');
+    // PERUBAHAN DI SINI: Simpan toast ID untuk bisa di-dismiss nanti
+    const loadingToast = toast.loading('Menganalisis data pendidikan...');
     
     const formData = new FormData();
     formData.append('csv_file', csvFile);
 
     try {
       const response = await axios.post('http://127.0.0.1:8000/api/analyze-aps/', formData);
+      
+      // Hapus toast loading sebelum menampilkan hasil
+      toast.dismiss(loadingToast);
       
       if (response.data.status === 'success') {
         setAnalysisResults(response.data);
@@ -90,6 +95,8 @@ export default function AnalysisPanel() {
       
     } catch (error) {
       console.error('Analysis error:', error);
+      // Hapus toast loading jika error
+      toast.dismiss(loadingToast);
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
     } finally {
       setIsAnalyzing(false);
@@ -214,11 +221,14 @@ export default function AnalysisPanel() {
     if (analysisResults?.matched_features?.features) {
       renderMap(analysisResults.matched_features.features);
     }
-    toast.success(`Menampilkan: ${category === 'all' ? 'Semua' : category}`);
+    toast.success(`Menampilkan: ${category === 'all' ? 'Semua' : category}`, {
+      duration: 1500 // Toast hanya muncul 1.5 detik
+    });
   };
 
   const downloadTemplate = () => {
     window.open('http://127.0.0.1:8000/api/template/aps/', '_blank');
+    toast.success('Membuka template CSV');
   };
 
   const downloadReport = () => {

@@ -1,4 +1,4 @@
-from django.contrib.gis.db import models
+from django.db import models
 
 class GeoFeature(models.Model):
     KATEGORI_CHOICES = [
@@ -10,7 +10,8 @@ class GeoFeature(models.Model):
 
     nama = models.CharField(max_length=100, blank=True, null=True)
     kategori = models.CharField(max_length=50, choices=KATEGORI_CHOICES)
-    geom = models.PolygonField(srid=4326) 
+    # GANTI geom PolygonField menjadi JSONField atau TextField agar tidak butuh GDAL
+    geom = models.JSONField(null=True, blank=True) 
     confidence_score = models.FloatField() 
     metadata = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

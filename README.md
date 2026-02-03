@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+#  PROJECT MAGANG
 
-## Getting Started
 
-First, run the development server:
+
+## 🚀 Panduan Instalasi (Getting Started)
+
+Ikuti langkah-langkah di bawah ini secara berurutan untuk menjalankan proyek di mesin lokal:
+
+### 1. Setup Database (Docker)
+
+Jalankan perintah ini di dalam folder utama (**root**) `projectM2/` untuk menyalakan PostgreSQL dan MongoDB:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Menjalankan database di latar belakang
+docker-compose up -d
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Setup Backend (Django)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Buka terminal baru, lalu masuk ke folder backend untuk menginstal dependensi dan menjalankan server:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Masuk ke folder backend
+cd backend
 
-## Learn More
+# Membuat Virtual Environment
+python -m venv venv
 
-To learn more about Next.js, take a look at the following resources:
+# Aktivasi Virtual Environment (Windows)
+.\venv\Scripts\activate
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Install semua library yang dibutuhkan
+pip install -r requirements.txt
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Migrasi database dan jalankan server
+python manage.py migrate
+python manage.py runserver
 
-## Deploy on Vercel
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Setup Frontend (Next.js)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Buka terminal satu lagi, masuk ke folder frontend, dan jalankan interface web:
+
+```bash
+# Masuk ke folder frontend
+cd frontend
+
+# Install dependensi Node.js
+npm install
+
+# Jalankan server development
+npm run dev
+
+```
+
+---
+
+## 🧠 Catatan Penting
+
+* **Environment**: Pastikan sudah menyalin `.env.example` menjadi `.env` di folder `backend/` sebelum menjalankan server.
+* **Port**:
+* Frontend: `http://localhost:3000`
+* Backend: `http://127.0.0.1:8000`
+* MongoDB: `27017`
+* PostgreSQL: `5432`

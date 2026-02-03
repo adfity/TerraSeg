@@ -2,7 +2,7 @@
 
 
 
-## 🚀 Panduan Instalasi (Getting Started)
+## Panduan Instalasi (Getting Started)
 
 Ikuti langkah-langkah di bawah ini secara berurutan untuk menjalankan proyek di mesin lokal:
 
@@ -57,7 +57,7 @@ npm run dev
 
 ---
 
-## 🧠 Catatan Penting
+## Catatan Penting
 
 * **Environment**: Pastikan sudah menyalin `.env.example` menjadi `.env` di folder `backend/` sebelum menjalankan server.
 * **Port**:

@@ -13,11 +13,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
+DB_MONGO_NAME = os.getenv("DB_MONGO_NAME")
 
 # Koneksi MongoDB
 client = MongoClient(MONGO_URI)
-mongo_db = client[MONGO_DB_NAME]
+mongo_db = client[DB_MONGO_NAME]
 
 
 # MODEL ANALISIS SEDERHANA

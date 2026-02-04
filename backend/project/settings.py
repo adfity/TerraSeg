@@ -97,7 +97,7 @@ DATABASES = {
 
 MONGO_DB_CONFIG = {
     'uri': os.getenv('MONGO_URI'),
-    'db_name': os.getenv('MONGO_DB_NAME')
+    'db_name': os.getenv('DB_MONGO_NAME')
 }
 
 # Password validation

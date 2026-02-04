@@ -1,15 +1,26 @@
-#  PROJECT MAGANG
+# TerraSeg - Project Magang
 
+TerraSeg adalah platform Sistem Informasi Geografis (GIS) terintegrasi yang menggunakan Django (Backend), Next.js (Frontend), serta dukungan database PostgreSQL dan NoSQL.
 
+---
+
+## Persyaratan Sistem (Prerequisites)
+
+Sebelum memulai, pastikan mesin lokal kamu sudah terinstall software dengan versi berikut:
+
+* **Python**: `3.12.x` (Minimal `3.10`+)
+* **Node.js**: `18.x` atau lebih baru (Rekomendasi versi LTS)
+* **Docker & Docker Compose**: Versi terbaru (Untuk menjalankan database)
+* **Package Manager**: `pip` (Python) dan `npm` (Node.js)
+
+---
 
 ## Panduan Instalasi (Getting Started)
 
-Ikuti langkah-langkah di bawah ini secara berurutan untuk menjalankan proyek di mesin lokal:
+Ikuti langkah-langkah di bawah ini secara berurutan untuk menjalankan proyek:
 
 ### 1. Setup Database (Docker)
-
-Jalankan perintah ini di dalam folder utama (**root**) `projectM2/` untuk menyalakan PostgreSQL dan MongoDB:
-
+Jalankan perintah ini di dalam folder utama (root) `TerraSeg/` untuk menyalakan PostgreSQL dan MongoDB:
 ```bash
 # Menjalankan database di latar belakang
 docker-compose up -d
@@ -18,7 +29,7 @@ docker-compose up -d
 
 ### 2. Setup Backend (Django)
 
-Buka terminal baru, lalu masuk ke folder backend untuk menginstal dependensi dan menjalankan server:
+Buka terminal baru, masuk ke folder backend, dan siapkan environment:
 
 ```bash
 # Masuk ke folder backend
@@ -59,9 +70,16 @@ npm run dev
 
 ## Catatan Penting
 
-* **Environment**: Pastikan sudah menyalin `.env.example` menjadi `.env` di folder `backend/` sebelum menjalankan server.
-* **Port**:
-* Frontend: `http://localhost:3000`
-* Backend: `http://127.0.0.1:8000`
-* MongoDB: `27017`
-* PostgreSQL: `5432`
+* **Environment**: Pastikan sudah menyalin `.env.example` menjadi `.env` di dalam folder `backend/` dan sesuaikan kredensial database sebelum menjalankan server.
+* **Akses Layanan**:
+* **Frontend**: `http://localhost:3000`
+* **Backend (API)**: `http://127.0.0.1:8000`
+
+
+* **Default Ports**:
+* **PostgreSQL**: `5432`
+* **MongoDB**: `27017`
+
+
+
+---

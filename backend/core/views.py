@@ -15,7 +15,7 @@ import math
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
+DB_MONGO_NAME = os.getenv("DB_MONGO_NAME")
 
 # Load Model
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'ai_models', 'best.pt')
@@ -23,7 +23,7 @@ model = YOLO(MODEL_PATH)
 
 # Koneksi MongoDB
 client = MongoClient(MONGO_URI)
-mongo_db = client[MONGO_DB_NAME]
+mongo_db = client[DB_MONGO_NAME]
 mongo_collection = mongo_db["ai_features"]
 
 def calculate_polygon_area(coords):

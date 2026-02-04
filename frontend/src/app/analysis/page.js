@@ -39,6 +39,7 @@ export default function AnalysisPage() {
   const [analysisResults, setAnalysisResults] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isClient, setIsClient] = useState(false);
+  const [isMapLoading, setIsMapLoading] = useState(true);
   const fileInputRef = useRef(null);
 
   // Dynamic imports untuk Leaflet (client-side only)
@@ -52,11 +53,16 @@ export default function AnalysisPage() {
     setIsClient(true);
     
     // Dynamic import untuk Leaflet components
+    setIsMapLoading(true);
     import('react-leaflet').then((leaflet) => {
       setMapContainer(() => leaflet.MapContainer);
       setTileLayer(() => leaflet.TileLayer);
       setGeoJSON(() => leaflet.GeoJSON);
       setScaleControl(() => leaflet.ScaleControl);
+      setIsMapLoading(false);
+    }).catch((error) => {
+      console.error('Failed to load Leaflet:', error);
+      setIsMapLoading(false);
     });
 
     // Import Leaflet CSS
@@ -166,17 +172,27 @@ export default function AnalysisPage() {
     );
   };
 
-  // Loading state untuk map
-  if (!isClient || !MapContainer) {
+  // Loading state untuk seluruh halaman saat pertama kali load
+  if (!isClient || isMapLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Memuat peta...</p>
+          <p className="text-gray-600">Memuat halaman analisis...</p>
         </div>
       </div>
     );
   }
+
+  // Loading state saat menganalisis data
+  const AnalysisLoading = () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Memuat halaman analisis...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -424,223 +440,234 @@ export default function AnalysisPage() {
           {/* Right Panel - Map & Results */}
           <div className="lg:col-span-2">
             {/* Map Container */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden h-[600px]">
-              <MapContainer
-                center={DEFAULT_CENTER}
-                zoom={DEFAULT_ZOOM}
-                className="h-full w-full"
-                zoomControl={true}
-                scrollWheelZoom={true}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                />
-                
-                {/* Render GeoJSON jika ada hasil */}
-                {analysisResults?.matched_features?.features && selectedCategory === 'all' && (
-                  <GeoJSON
-                    data={{
-                      type: "FeatureCollection",
-                      features: analysisResults.matched_features.features
-                    }}
-                    style={(feature) => {
-                      const analysis = feature.properties?.analysis || {};
-                      const warna = analysis.warna || CATEGORIES.SEDANG.color;
-                      
-                      return {
-                        fillColor: warna,
-                        color: '#ffffff',
-                        weight: 2,
-                        fillOpacity: 0.6,
-                        opacity: 0.8
-                      };
-                    }}
-                    onEachFeature={(feature, layer) => {
-                      const props = feature.properties;
-                      const analysis = props.analysis || {};
-                      
-                      const popupContent = `
-                        <div style="font-family: sans-serif; min-width: 250px; max-width: 300px;">
-                          <!-- Header -->
-                          <div style="background: ${analysis.warna || '#ccc'}; color: white; padding: 10px; border-radius: 6px 6px 0 0;">
-                            <div style="font-weight: bold; font-size: 16px;">${analysis.nama_provinsi || 'Unknown'}</div>
-                            <div style="font-size: 12px; margin-top: 4px;">Kategori: ${analysis.kategori || 'N/A'}</div>
-                          </div>
-                          
-                          <!-- Metrics -->
-                          <div style="padding: 12px; background: #f8fafc;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-                              <div style="text-align: center;">
-                                <div style="font-weight: 600; color: #475569;">Rata² APS</div>
-                                <div style="font-size: 18px; font-weight: bold; color: ${analysis.warna || '#475569'};">${analysis.rata_aps?.toFixed(1) || '0.0'}%</div>
-                              </div>
-                              <div style="text-align: center;">
-                                <div style="font-weight: 600; color: #475569;">WERI</div>
-                                <div style="font-size: 18px; font-weight: bold; color: ${analysis.weri > 30 ? '#ef4444' : analysis.weri > 20 ? '#f59e0b' : '#10b981'};">${analysis.weri?.toFixed(1) || '0.0'}</div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <!-- Insights -->
-                          <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
-                            <div style="font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 13px;">
-                              Insight:
-                            </div>
-                            <div style="font-size: 12px; color: #4b5563; max-height: 120px; overflow-y: auto;">
-                              ${analysis.insights ? 
-                                analysis.insights.slice(0, 3).map(insight => 
-                                  `<div style="margin-bottom: 6px; padding-left: 8px; border-left: 2px solid ${analysis.warna || '#ccc'};">
-                                    ${insight}
-                                  </div>`
-                                ).join('') : 
-                                'Tidak ada insight tersedia'
-                              }
-                            </div>
-                          </div>
-                          
-                          <!-- APS Data -->
-                          <div style="padding: 12px; background: #f1f5f9; border-top: 1px solid #e5e7eb; font-size: 11px;">
-                            <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">Data APS:</div>
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
-                              ${analysis.aps_data?.APS_7_12 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #0369a1;">SD</div>
-                                  <div>${analysis.aps_data.APS_7_12.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                              ${analysis.aps_data?.APS_13_15 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #a16207;">SMP</div>
-                                  <div>${analysis.aps_data.APS_13_15.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                              ${analysis.aps_data?.APS_16_18 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #15803d;">SMA</div>
-                                  <div>${analysis.aps_data.APS_16_18.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                              ${analysis.aps_data?.APS_19_23 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #7c3aed;">PT</div>
-                                  <div>${analysis.aps_data.APS_19_23.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      `;
-                      
-                      layer.bindPopup(popupContent);
-                    }}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden h-[600px] relative">
+              {isMapLoading && (
+                <div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                    <p className="text-gray-600">Memuat peta...</p>
+                  </div>
+                </div>
+              )}
+              
+              {MapContainer && (
+                <MapContainer
+                  center={DEFAULT_CENTER}
+                  zoom={DEFAULT_ZOOM}
+                  className="h-full w-full"
+                  zoomControl={true}
+                  scrollWheelZoom={true}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
-                )}
-                
-                {/* Filtered features untuk kategori tertentu */}
-                {analysisResults?.matched_features?.features && selectedCategory !== 'all' && (
-                  <GeoJSON
-                    data={{
-                      type: "FeatureCollection",
-                      features: analysisResults.matched_features.features.filter(
-                        f => f.properties?.analysis?.kategori === selectedCategory
-                      )
-                    }}
-                    style={(feature) => {
-                      const analysis = feature.properties?.analysis || {};
-                      const warna = analysis.warna || CATEGORIES[selectedCategory]?.color || CATEGORIES.SEDANG.color;
-                      
-                      return {
-                        fillColor: warna,
-                        color: '#ffffff',
-                        weight: 2,
-                        fillOpacity: 0.6,
-                        opacity: 0.8
-                      };
-                    }}
-                    onEachFeature={(feature, layer) => {
-                      const props = feature.properties;
-                      const analysis = props.analysis || {};
-                      
-                      const popupContent = `
-                        <div style="font-family: sans-serif; min-width: 250px; max-width: 300px;">
-                          <!-- Header -->
-                          <div style="background: ${analysis.warna || '#ccc'}; color: white; padding: 10px; border-radius: 6px 6px 0 0;">
-                            <div style="font-weight: bold; font-size: 16px;">${analysis.nama_provinsi || 'Unknown'}</div>
-                            <div style="font-size: 12px; margin-top: 4px;">Kategori: ${analysis.kategori || 'N/A'}</div>
-                          </div>
-                          
-                          <!-- Metrics -->
-                          <div style="padding: 12px; background: #f8fafc;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-                              <div style="text-align: center;">
-                                <div style="font-weight: 600; color: #475569;">Rata² APS</div>
-                                <div style="font-size: 18px; font-weight: bold; color: ${analysis.warna || '#475569'};">${analysis.rata_aps?.toFixed(1) || '0.0'}%</div>
-                              </div>
-                              <div style="text-align: center;">
-                                <div style="font-weight: 600; color: #475569;">WERI</div>
-                                <div style="font-size: 18px; font-weight: bold; color: ${analysis.weri > 30 ? '#ef4444' : analysis.weri > 20 ? '#f59e0b' : '#10b981'};">${analysis.weri?.toFixed(1) || '0.0'}</div>
+                  
+                  {/* Render GeoJSON jika ada hasil */}
+                  {analysisResults?.matched_features?.features && selectedCategory === 'all' && (
+                    <GeoJSON
+                      data={{
+                        type: "FeatureCollection",
+                        features: analysisResults.matched_features.features
+                      }}
+                      style={(feature) => {
+                        const analysis = feature.properties?.analysis || {};
+                        const warna = analysis.warna || CATEGORIES.SEDANG.color;
+                        
+                        return {
+                          fillColor: warna,
+                          color: '#ffffff',
+                          weight: 2,
+                          fillOpacity: 0.6,
+                          opacity: 0.8
+                        };
+                      }}
+                      onEachFeature={(feature, layer) => {
+                        const props = feature.properties;
+                        const analysis = props.analysis || {};
+                        
+                        const popupContent = `
+                          <div style="font-family: sans-serif; min-width: 250px; max-width: 300px;">
+                            <!-- Header -->
+                            <div style="background: ${analysis.warna || '#ccc'}; color: white; padding: 10px; border-radius: 6px 6px 0 0;">
+                              <div style="font-weight: bold; font-size: 16px;">${analysis.nama_provinsi || 'Unknown'}</div>
+                              <div style="font-size: 12px; margin-top: 4px;">Kategori: ${analysis.kategori || 'N/A'}</div>
+                            </div>
+                            
+                            <!-- Metrics -->
+                            <div style="padding: 12px; background: #f8fafc;">
+                              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                                <div style="text-align: center;">
+                                  <div style="font-weight: 600; color: #475569;">Rata² APS</div>
+                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.warna || '#475569'};">${analysis.rata_aps?.toFixed(1) || '0.0'}%</div>
+                                </div>
+                                <div style="text-align: center;">
+                                  <div style="font-weight: 600; color: #475569;">WERI</div>
+                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.weri > 30 ? '#ef4444' : analysis.weri > 20 ? '#f59e0b' : '#10b981'};">${analysis.weri?.toFixed(1) || '0.0'}</div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          
-                          <!-- Insights -->
-                          <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
-                            <div style="font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 13px;">
-                              Insight:
+                            
+                            <!-- Insights -->
+                            <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
+                              <div style="font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 13px;">
+                                Insight:
+                              </div>
+                              <div style="font-size: 12px; color: #4b5563; max-height: 120px; overflow-y: auto;">
+                                ${analysis.insights ? 
+                                  analysis.insights.slice(0, 3).map(insight => 
+                                    `<div style="margin-bottom: 6px; padding-left: 8px; border-left: 2px solid ${analysis.warna || '#ccc'};">
+                                      ${insight}
+                                    </div>`
+                                  ).join('') : 
+                                  'Tidak ada insight tersedia'
+                                }
+                              </div>
                             </div>
-                            <div style="font-size: 12px; color: #4b5563; max-height: 120px; overflow-y: auto;">
-                              ${analysis.insights ? 
-                                analysis.insights.slice(0, 3).map(insight => 
-                                  `<div style="margin-bottom: 6px; padding-left: 8px; border-left: 2px solid ${analysis.warna || '#ccc'};">
-                                    ${insight}
-                                  </div>`
-                                ).join('') : 
-                                'Tidak ada insight tersedia'
-                              }
+                            
+                            <!-- APS Data -->
+                            <div style="padding: 12px; background: #f1f5f9; border-top: 1px solid #e5e7eb; font-size: 11px;">
+                              <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">Data APS:</div>
+                              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
+                                ${analysis.aps_data?.APS_7_12 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #0369a1;">SD</div>
+                                    <div>${analysis.aps_data.APS_7_12.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                                ${analysis.aps_data?.APS_13_15 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #a16207;">SMP</div>
+                                    <div>${analysis.aps_data.APS_13_15.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                                ${analysis.aps_data?.APS_16_18 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #15803d;">SMA</div>
+                                    <div>${analysis.aps_data.APS_16_18.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                                ${analysis.aps_data?.APS_19_23 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #7c3aed;">PT</div>
+                                    <div>${analysis.aps_data.APS_19_23.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                              </div>
                             </div>
                           </div>
-                          
-                          <!-- APS Data -->
-                          <div style="padding: 12px; background: #f1f5f9; border-top: 1px solid #e5e7eb; font-size: 11px;">
-                            <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">Data APS:</div>
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
-                              ${analysis.aps_data?.APS_7_12 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #0369a1;">SD</div>
-                                  <div>${analysis.aps_data.APS_7_12.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                              ${analysis.aps_data?.APS_13_15 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #a16207;">SMP</div>
-                                  <div>${analysis.aps_data.APS_13_15.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                              ${analysis.aps_data?.APS_16_18 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #15803d;">SMA</div>
-                                  <div>${analysis.aps_data.APS_16_18.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
-                              ${analysis.aps_data?.APS_19_23 !== undefined ? 
-                                `<div>
-                                  <div style="font-weight: 500; color: #7c3aed;">PT</div>
-                                  <div>${analysis.aps_data.APS_19_23.toFixed(1)}%</div>
-                                </div>` : ''
-                              }
+                        `;
+                        
+                        layer.bindPopup(popupContent);
+                      }}
+                    />
+                  )}
+                  
+                  {/* Filtered features untuk kategori tertentu */}
+                  {analysisResults?.matched_features?.features && selectedCategory !== 'all' && (
+                    <GeoJSON
+                      data={{
+                        type: "FeatureCollection",
+                        features: analysisResults.matched_features.features.filter(
+                          f => f.properties?.analysis?.kategori === selectedCategory
+                        )
+                      }}
+                      style={(feature) => {
+                        const analysis = feature.properties?.analysis || {};
+                        const warna = analysis.warna || CATEGORIES[selectedCategory]?.color || CATEGORIES.SEDANG.color;
+                        
+                        return {
+                          fillColor: warna,
+                          color: '#ffffff',
+                          weight: 2,
+                          fillOpacity: 0.6,
+                          opacity: 0.8
+                        };
+                      }}
+                      onEachFeature={(feature, layer) => {
+                        const props = feature.properties;
+                        const analysis = props.analysis || {};
+                        
+                        const popupContent = `
+                          <div style="font-family: sans-serif; min-width: 250px; max-width: 300px;">
+                            <!-- Header -->
+                            <div style="background: ${analysis.warna || '#ccc'}; color: white; padding: 10px; border-radius: 6px 6px 0 0;">
+                              <div style="font-weight: bold; font-size: 16px;">${analysis.nama_provinsi || 'Unknown'}</div>
+                              <div style="font-size: 12px; margin-top: 4px;">Kategori: ${analysis.kategori || 'N/A'}</div>
+                            </div>
+                            
+                            <!-- Metrics -->
+                            <div style="padding: 12px; background: #f8fafc;">
+                              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                                <div style="text-align: center;">
+                                  <div style="font-weight: 600; color: #475569;">Rata² APS</div>
+                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.warna || '#475569'};">${analysis.rata_aps?.toFixed(1) || '0.0'}%</div>
+                                </div>
+                                <div style="text-align: center;">
+                                  <div style="font-weight: 600; color: #475569;">WERI</div>
+                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.weri > 30 ? '#ef4444' : analysis.weri > 20 ? '#f59e0b' : '#10b981'};">${analysis.weri?.toFixed(1) || '0.0'}</div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <!-- Insights -->
+                            <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
+                              <div style="font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 13px;">
+                                Insight:
+                              </div>
+                              <div style="font-size: 12px; color: #4b5563; max-height: 120px; overflow-y: auto;">
+                                ${analysis.insights ? 
+                                  analysis.insights.slice(0, 3).map(insight => 
+                                    `<div style="margin-bottom: 6px; padding-left: 8px; border-left: 2px solid ${analysis.warna || '#ccc'};">
+                                      ${insight}
+                                    </div>`
+                                  ).join('') : 
+                                  'Tidak ada insight tersedia'
+                                }
+                              </div>
+                            </div>
+                            
+                            <!-- APS Data -->
+                            <div style="padding: 12px; background: #f1f5f9; border-top: 1px solid #e5e7eb; font-size: 11px;">
+                              <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">Data APS:</div>
+                              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
+                                ${analysis.aps_data?.APS_7_12 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #0369a1;">SD</div>
+                                    <div>${analysis.aps_data.APS_7_12.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                                ${analysis.aps_data?.APS_13_15 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #a16207;">SMP</div>
+                                    <div>${analysis.aps_data.APS_13_15.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                                ${analysis.aps_data?.APS_16_18 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #15803d;">SMA</div>
+                                    <div>${analysis.aps_data.APS_16_18.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                                ${analysis.aps_data?.APS_19_23 !== undefined ? 
+                                  `<div>
+                                    <div style="font-weight: 500; color: #7c3aed;">PT</div>
+                                    <div>${analysis.aps_data.APS_19_23.toFixed(1)}%</div>
+                                  </div>` : ''
+                                }
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      `;
-                      
-                      layer.bindPopup(popupContent);
-                    }}
-                  />
-                )}
-                
-                <ScaleControl position="bottomleft" />
-              </MapContainer>
+                        `;
+                        
+                        layer.bindPopup(popupContent);
+                      }}
+                    />
+                  )}
+                  
+                  <ScaleControl position="bottomleft" />
+                </MapContainer>
+              )}
             </div>
 
             {/* Stats & Legend */}

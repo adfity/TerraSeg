@@ -32,11 +32,11 @@ docker-compose up -d
 Buka terminal baru, masuk ke folder backend, dan siapkan environment:
 
 ```bash
-# Masuk ke folder backend
-cd backend
-
 # Membuat Virtual Environment
 python -m venv venv
+
+# Masuk ke folder backend
+cd backend
 
 # Aktivasi Virtual Environment (Windows)
 .\venv\Scripts\activate

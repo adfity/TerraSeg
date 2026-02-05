@@ -61,3 +61,19 @@ body {
 #cta {
   scroll-margin-top: 80px; /* header height */
 }
+
+/* Tambahkan ke global.css atau tailwind.config.js */
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s ease-out;
+}

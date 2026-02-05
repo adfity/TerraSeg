@@ -35,14 +35,14 @@ Buka terminal baru, masuk ke folder backend, dan siapkan environment:
 # Membuat Virtual Environment
 python -m venv venv
 
-# Masuk ke folder backend
-cd backend
-
 # Aktivasi Virtual Environment (Windows)
 .\venv\Scripts\activate
 
 # Install semua library yang dibutuhkan
 pip install -r requirements.txt
+
+# Masuk ke folder backend
+cd backend
 
 # Migrasi database dan jalankan server
 python manage.py migrate

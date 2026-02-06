@@ -145,33 +145,33 @@ class PendidikanAnalytics:
                 'priority': 'Tinggi',
                 'title': 'Intervensi Khusus',
                 'actions': [
-                    'Program wajib belajar 12 tahun intensif',
-                    'Beasiswa KIP Plus untuk keluarga miskin',
-                    'Pembangunan sekolah baru di daerah terpencil',
-                    'Guru kontrak daerah 3T dengan insentif khusus'
-                ]
+            'Percepatan Wajib Belajar 12 Tahun melalui PIP (Program Indonesia Pintar) Afirmasi',
+            'Pembangunan Unit Sekolah Baru (USB) dan Ruang Kelas Baru (RKB) di lokasi prioritas',
+            'Implementasi Dana Alokasi Khusus (DAK) Fisik untuk rehabilitasi sarana pendidikan rusak',
+            'Pemenuhan kuota guru melalui jalur PPPK dengan prioritas penempatan wilayah 3T'
+        ]
             })
         elif kategori == "SEDANG":
             recommendations.append({
                 'priority': 'Sedang',
                 'title': 'Penguatan Program',
                 'actions': [
-                    'Optimalisasi BOS dan BOP',
-                    'Pelatihan guru berkelanjutan',
-                    'Kampanye "Ayo Sekolah"',
-                    'Kerjasama dengan industri lokal'
-                ]
+            'Optimalisasi Dana BOS (Bantuan Operasional Sekolah) berbasis kinerja dan rapor pendidikan',
+            'Penguatan kompetensi pendidik melalui integrasi Platform Merdeka Mengajar (PMM)',
+            'Revitalisasi pendidikan vokasi (SMK) melalui program Link and Match dengan dunia industri',
+            'Pengembangan literasi dan numerasi berbasis standar asesmen nasional'
+        ]
             })
         else:
             recommendations.append({
                 'priority': 'Rendah',
                 'title': 'Pemeliharaan & Inovasi',
                 'actions': [
-                    'Digitalisasi pembelajaran',
-                    'Pengembangan STEM education',
-                    'Beasiswa prestasi',
-                    'Program pertukaran pelajar'
-                ]
+            'Implementasi transformasi digital pendidikan melalui bantuan perangkat TIK sekolah',
+            'Pengembangan kurikulum berbasis talenta tinggi dan penguatan STEM (Science, Technology, Engineering, and Math)',
+            'Pemberian beasiswa prestasi tingkat lanjut dan sertifikasi kompetensi internasional',
+            'Perluasan kolaborasi akademik internasional melalui program pertukaran pelajar dan guru'
+        ]
             })
         
         # Rekomendasi khusus per jenjang rendah
@@ -212,6 +212,7 @@ def normalize_name(name):
     abbreviations = {
         'KEP.': 'KEPULAUAN',
         'DIY': 'DAERAH ISTIMEWA YOGYAKARTA',
+        'DI': 'DAERAH ISTIMEWA',
         'DKI': 'DAERAH KHUSUS IBUKOTA JAKARTA',
         'JATIM': 'JAWA TIMUR',
         'JATENG': 'JAWA TENGAH',

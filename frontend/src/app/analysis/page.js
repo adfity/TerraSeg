@@ -2,746 +2,410 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { 
-  Upload, BarChart3, X, Download, 
-  AlertTriangle, School, FileText,
-  MapPin, CheckCircle, Info,
-  Filter, Home, Layers
+  Upload, Download, FileText, School, Wallet, HeartPulse, 
+  AlertCircle, CheckCircle, Plus, Minus, ChevronDown, Filter, Menu, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
-// 3 Kategori dengan warna
-const CATEGORIES = {
-  RENDAH: { 
-    color: "#d73027", 
-    label: "RENDAH (Perlu Intervensi)",
-    icon: "🔴"
-  },
-  SEDANG: { 
-    color: "#fee08b", 
-    label: "SEDANG (Butuh Penguatan)",
-    icon: "🟡"
-  },
-  TINGGI: { 
-    color: "#1a9850", 
-    label: "TINGGI (Pertahankan)",
-    icon: "🟢"
-  }
+// Konfigurasi Kategori Sesuai Data Backend
+const KATEGORI = {
+  RENDAH: { warna: "#d73027", label: "RENDAH", status: "KRITIS" },
+  SEDANG: { warna: "#fee08b", label: "SEDANG", status: "WASPADA" },
+  TINGGI: { warna: "#1a9850", label: "TINGGI", status: "AMAN" }
 };
 
-// Map configuration
-const DEFAULT_CENTER = [-2.5, 118];
-const DEFAULT_ZOOM = 5;
+const PUSAT_DEFAULT = [-2.5, 118];
+const ZOOM_DEFAULT = 5;
 
-export default function AnalysisPage() {
-  const [csvFile, setCsvFile] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResults, setAnalysisResults] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isClient, setIsClient] = useState(false);
-  const [isMapLoading, setIsMapLoading] = useState(true);
-  const fileInputRef = useRef(null);
+export default function HalamanAnalisisPendidikan() {
+  const [fileCsv, setFileCsv] = useState(null);
+  const [sedangMenganalisis, setSedangMenganalisis] = useState(false);
+  const [hasilAnalisis, setHasilAnalisis] = useState(null);
+  const [kategoriTerpilih, setKategoriTerpilih] = useState('SEMUA');
+  const [adalahClient, setAdalahClient] = useState(false);
+  const [petaSedangMemuat, setPetaSedangMemuat] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const [menuUnduhTerbuka, setMenuUnduhTerbuka] = useState(false);
+  const [menuFilterTerbuka, setMenuFilterTerbuka] = useState(false);
 
-  // Dynamic imports untuk Leaflet (client-side only)
-  const [MapContainer, setMapContainer] = useState(null);
-  const [TileLayer, setTileLayer] = useState(null);
+  const refInputFile = useRef(null);
+  const petaRef = useRef(null);
+
+  const [KontainerPeta, setKontainerPeta] = useState(null);
+  const [LapisanPeta, setLapisanPeta] = useState(null);
   const [GeoJSON, setGeoJSON] = useState(null);
-  const [ScaleControl, setScaleControl] = useState(null);
+  const [Skala, setSkala] = useState(null);
 
   useEffect(() => {
-    // Set flag client-side
-    setIsClient(true);
-    
-    // Dynamic import untuk Leaflet components
-    setIsMapLoading(true);
+    setAdalahClient(true);
+    setPetaSedangMemuat(true);
     import('react-leaflet').then((leaflet) => {
-      setMapContainer(() => leaflet.MapContainer);
-      setTileLayer(() => leaflet.TileLayer);
+      setKontainerPeta(() => leaflet.MapContainer);
+      setLapisanPeta(() => leaflet.TileLayer);
       setGeoJSON(() => leaflet.GeoJSON);
-      setScaleControl(() => leaflet.ScaleControl);
-      setIsMapLoading(false);
-    }).catch((error) => {
-      console.error('Failed to load Leaflet:', error);
-      setIsMapLoading(false);
+      setSkala(() => leaflet.ScaleControl);
+      setPetaSedangMemuat(false);
     });
-
-    // Import Leaflet CSS
     import('leaflet/dist/leaflet.css');
   }, []);
 
-  const resetAll = () => {
-    setAnalysisResults(null);
-    setCsvFile(null);
-    setSelectedCategory('all');
-    setIsAnalyzing(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    toast.success('Analisis direset');
-  };
-
-  const handleFileUpload = (e) => {
+  const tanganiUnggahFile = (e) => {
     const file = e.target.files[0];
     if (file && file.name.endsWith('.csv')) {
-      setCsvFile(file);
-      toast.success(`File "${file.name}" siap dianalisis`);
+      setFileCsv(file);
+      toast.success(`Berkas "${file.name}" siap dianalisis`);
+    } else {
+      toast.error("Mohon unggah berkas format CSV");
     }
   };
 
-  const runAnalysis = async () => {
-    if (!csvFile) {
-      toast.error('Pilih file CSV terlebih dahulu');
-      return;
-    }
-
-    setIsAnalyzing(true);
-    const loadingToast = toast.loading('Menganalisis data pendidikan...');
-    
-    const formData = new FormData();
-    formData.append('csv_file', csvFile);
+  const jalankanAnalisis = async () => {
+    if (!fileCsv) return toast.error('Silakan pilih berkas terlebih dahulu');
+    setSedangMenganalisis(true);
+    const petunjukMemuat = toast.loading('Sedang menganalisis data...');
+    const dataFormulir = new FormData();
+    dataFormulir.append('csv_file', fileCsv);
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/analyze-aps/', formData);
-      
-      toast.dismiss(loadingToast);
-      
-      if (response.data.status === 'success') {
-        setAnalysisResults(response.data);
-        toast.success(`✅ ${response.data.total_matched} provinsi berhasil dianalisis`);
-      } else {
-        toast.error(response.data.error || 'Gagal analisis');
+      const respons = await axios.post('http://127.0.0.1:8000/api/analyze-aps/', dataFormulir);
+      toast.dismiss(petunjukMemuat);
+      if (respons.data.status === 'success') {
+        setHasilAnalisis(respons.data);
+        toast.success(`Berhasil menganalisis ${respons.data.total_matched} wilayah`);
       }
-      
-    } catch (error) {
-      console.error('Analysis error:', error);
-      toast.dismiss(loadingToast);
-      toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+    } catch (galat) {
+      toast.dismiss(petunjukMemuat);
+      toast.error('Gagal terhubung ke peladen');
     } finally {
-      setIsAnalyzing(false);
+      setSedangMenganalisis(false);
     }
   };
 
-  const filterByCategory = (category) => {
-    setSelectedCategory(category);
-    toast.success(`Menampilkan: ${category === 'all' ? 'Semua' : category}`, {
-      duration: 1500
-    });
-  };
+  const eksporData = (format) => {
+    if (!hasilAnalisis) return toast.error("Data tidak tersedia");
+    const ringkasan = hasilAnalisis.analysis_summary;
+    setMenuUnduhTerbuka(false);
 
-  const downloadTemplate = () => {
-    window.open('http://127.0.0.1:8000/api/template/aps/', '_blank');
-    toast.success('Membuka template CSV');
-  };
-
-  const downloadReport = () => {
-    if (!analysisResults) return;
-    
-    const report = {
-      title: 'Laporan Analisis Pendidikan',
-      date: new Date().toISOString(),
-      summary: {
-        total_provinces: analysisResults.total_data,
-        matched_provinces: analysisResults.total_matched,
-        categories: analysisResults.kategori_distribusi
-      },
-      top_risky: analysisResults.top_risky || [],
-      recommendations: analysisResults.national_recommendations || []
-    };
-    
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `laporan-pendidikan-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    toast.success('Laporan diunduh');
-  };
-
-  // Filter features berdasarkan kategori
-  const getFilteredFeatures = () => {
-    if (!analysisResults?.matched_features?.features) return [];
-    
-    if (selectedCategory === 'all') {
-      return analysisResults.matched_features.features;
+    if (format === 'EXCEL') {
+      const lembarKerja = XLSX.utils.json_to_sheet(ringkasan);
+      const bukuKerja = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(bukuKerja, lembarKerja, "Analisis Pendidikan");
+      XLSX.writeFile(bukuKerja, "TERASEG_Pendidikan.xlsx");
+    } else if (format === 'JSON') {
+      const gumpalan = new Blob([JSON.stringify(hasilAnalisis, null, 2)], { type: 'application/json' });
+      unduhBerkas(gumpalan, 'TERASEG_Pendidikan.json');
+    } else if (format === 'CSV') {
+      const barisCsv = [
+        ["Provinsi", "Indeks Risiko", "Kategori", "Rata-rata Partisipasi"].join(","),
+        ...ringkasan.map(s => [s.provinsi, s.weri, s.kategori, s.rata_aps].join(","))
+      ].join("\n");
+      const gumpalan = new Blob([barisCsv], { type: 'text/csv' });
+      unduhBerkas(gumpalan, 'TERASEG_Pendidikan.csv');
+    } else if (format === 'GEOJSON') {
+      const gumpalan = new Blob([JSON.stringify(hasilAnalisis.matched_features, null, 2)], { type: 'application/json' });
+      unduhBerkas(gumpalan, 'TERASEG_Spasial_Pendidikan.geojson');
     }
-    
-    return analysisResults.matched_features.features.filter(
-      f => f.properties?.analysis?.kategori === selectedCategory
-    );
   };
 
-  // Loading state untuk seluruh halaman saat pertama kali load
-  if (!isClient || isMapLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Memuat halaman analisis...</p>
-        </div>
-      </div>
-    );
-  }
+  const unduhBerkas = (gumpalan, namaBerkas) => {
+    const tautan = URL.createObjectURL(gumpalan);
+    const elemen = document.createElement('a');
+    elemen.href = tautan; elemen.download = namaBerkas; elemen.click();
+    URL.revokeObjectURL(tautan);
+  };
 
-  // Loading state saat menganalisis data
-  const AnalysisLoading = () => (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Memuat halaman analisis...</p>
-      </div>
-    </div>
-  );
+  const ambilDataTabelTerfilter = () => {
+    if (!hasilAnalisis?.matched_features?.features) return [];
+    const fitur = hasilAnalisis.matched_features.features;
+    if (kategoriTerpilih === 'SEMUA') return fitur;
+    return fitur.filter(f => f.properties?.analysis?.kategori === kategoriTerpilih);
+  };
+
+  const dataTerfilter = ambilDataTabelTerfilter();
+
+  if (!adalahClient) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link 
-                href="/map" 
-                className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                title="Kembali ke Peta"
-              >
-                <Home size={20} />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
-                  <School className="text-white" size={24} />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Analisis Pendidikan</h1>
-                  <p className="text-sm text-gray-600">Sistem 3 Kategori - APS (Angka Partisipasi Sekolah)</p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900 overflow-x-hidden">
+      {/* HEADER UTAMA */}
+      <nav className="bg-white border-b px-4 md:px-8 py-5 flex justify-between items-center shadow-sm sticky top-0 z-[1001]">
+        {/* LOGO KIRI */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-9 h-9 bg-[#0f172a] rounded-xl flex items-center justify-center shadow-lg shadow-slate-200">
+            <div className="w-3 h-3 border-2 border-cyan-400 rounded-full animate-pulse"></div>
+          </div>
+          <span className="text-xl font-black text-[#0f172a] tracking-[0.2em] uppercase">TERASEG</span>
+        </div>
+
+        {/* NAVIGASI TENGAH (Desktop) */}
+        <div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+          <Link href="/ekonomi" className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] hover:text-blue-600 transition-all">
+            <Wallet size={15} /> Ekonomi
+          </Link>
+          <Link href="/pendidikan" className="flex items-center gap-2 text-[11px] font-black text-blue-600 border-b-2 border-blue-600 pb-1 uppercase tracking-[0.15em]">
+            <School size={15} /> Pendidikan
+          </Link>
+          <Link href="/kesehatan" className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] hover:text-blue-600 transition-all">
+            <HeartPulse size={15} /> Kesehatan
+          </Link>
+        </div>
+
+        {/* UNGGAH & MENU MOBILE (Kanan) */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
+            <div 
+              onClick={() => refInputFile.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 hover:shadow-md transition-all group"
+            >
+              <Upload size={14} className="text-slate-400 group-hover:text-blue-500" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate max-w-[100px]">
+                {fileCsv ? fileCsv.name : "UNGGAH"}
+              </span>
+              <input type="file" ref={refInputFile} hidden onChange={tanganiUnggahFile} accept=".csv" />
             </div>
-            
-            <div className="flex items-center gap-3">
-              {analysisResults ? (
-                <button
-                  onClick={resetAll}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                >
-                  Analisis Baru
-                </button>
-              ) : null}
-              
-              <Link
-                href="/map"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
-                <Layers size={18} />
-                <span>Peta Utama</span>
-              </Link>
-            </div>
+            <button 
+              onClick={jalankanAnalisis}
+              disabled={sedangMenganalisis || !fileCsv}
+              className="px-6 py-2.5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] tracking-[0.2em] hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-200 disabled:opacity-50 transition-all uppercase active:scale-95"
+            >
+              ANALISIS
+            </button>
+          </div>
+          
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-slate-800 bg-slate-50 rounded-xl">
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      </nav>
+
+      {/* MENU MOBILE OVERLAY */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-[1002] bg-white p-8 flex flex-col gap-6 animate-in slide-in-from-top duration-300">
+          <div className="flex justify-between items-center mb-8">
+            <span className="font-black text-[#0f172a] tracking-[0.2em] uppercase">MENU</span>
+            <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-full"><X size={24}/></button>
+          </div>
+          <Link href="/ekonomi" className="flex items-center gap-4 text-sm font-black text-slate-500 uppercase tracking-[0.2em] py-4 border-b border-slate-50">
+            <Wallet size={20} /> Ekonomi
+          </Link>
+          <Link href="/pendidikan" className="flex items-center gap-4 text-sm font-black text-blue-600 uppercase tracking-[0.2em] py-4 border-b border-slate-50">
+            <School size={20} /> Pendidikan
+          </Link>
+          <Link href="/kesehatan" className="flex items-center gap-4 text-sm font-black text-slate-500 uppercase tracking-[0.2em] py-4 border-b border-slate-50">
+            <HeartPulse size={20} /> Kesehatan
+          </Link>
+          <div className="mt-auto flex flex-col gap-4">
+             <div onClick={() => refInputFile.current?.click()} className="flex justify-center items-center gap-3 p-5 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl">
+                <Upload size={20} className="text-slate-400" />
+                <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">{fileCsv ? fileCsv.name : "PILIH BERKAS CSV"}</span>
+             </div>
+             <button onClick={() => { jalankanAnalisis(); setMobileMenuOpen(false); }} className="w-full p-5 bg-[#0f172a] text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200">MULAI ANALISIS ⚡</button>
           </div>
         </div>
-      </header>
+      )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel - Controls */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Upload Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center bg-blue-50">
-                <Upload className="mx-auto text-blue-600 mb-3" size={36} />
-                <p className="text-sm text-blue-800 mb-2 font-medium">
-                  Upload file CSV data APS
-                </p>
-                <p className="text-xs text-blue-600 mb-4">
-                  Format: Provinsi, APS SD, APS SMP, APS SMA, APS PT
-                </p>
-                
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                
-                {csvFile && (
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText size={16} className="text-green-600" />
-                        <span className="text-sm font-medium">{csvFile.name}</span>
+      <div className="max-w-[1440px] mx-auto p-4 md:p-8">
+        {/* AREA PETA */}
+        <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-4 md:border-[12px] border-white h-[550px] md:h-[750px] relative overflow-hidden group">
+          {!petaSedangMemuat && KontainerPeta && (
+            <KontainerPeta 
+              center={PUSAT_DEFAULT} 
+              zoom={ZOOM_DEFAULT} 
+              className="h-full w-full z-0" 
+              zoomControl={false}
+              ref={petaRef}
+            >
+              <LapisanPeta url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+              {hasilAnalisis?.matched_features?.features && (
+                <GeoJSON 
+                  key={JSON.stringify(hasilAnalisis.matched_features.features) + kategoriTerpilih}
+                  data={{ type: "FeatureCollection", features: hasilAnalisis.matched_features.features }}
+                  style={(fitur) => {
+                    const analisis = fitur.properties?.analysis || {};
+                    const terlihat = kategoriTerpilih === 'SEMUA' || analisis.kategori === kategoriTerpilih;
+                    return { 
+                      fillColor: analisis.warna || "#cbd5e1", 
+                      weight: 2, opacity: terlihat ? 1 : 0, 
+                      color: 'white', fillOpacity: terlihat ? 0.75 : 0 
+                    };
+                  }}
+                  onEachFeature={(fitur, lapisan) => {
+                    const analisis = fitur.properties?.analysis || {};
+                    const dataAps = analisis.aps_data || {};
+                    const wawasan = analisis.insights?.map(i => `<div style="margin-bottom:6px; padding-left:10px; border-left:3px solid ${analisis.warna}; font-weight: 600;">${i}</div>`).join('') || '';
+                    
+                    lapisan.bindTooltip(`
+                      <div style="font-family: inherit; padding: 6px;">
+                        <div style="font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.1em;">${analisis.nama_provinsi}</div>
+                        <div style="font-size: 10px; font-weight: 800; color: ${analisis.warna}; margin-top:2px;">STATUS: ${analisis.kategori}</div>
                       </div>
-                      <button
-                        onClick={() => {
-                          setCsvFile(null);
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                    `, { sticky: true, opacity: 0.95 });
 
-              {/* Info Panel */}
-              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info size={16} className="text-blue-600" />
-                  <p className="font-medium text-blue-800">Metode Analisis</p>
-                </div>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• 3 Kategori: RENDAH, SEDANG, TINGGI</li>
-                  <li>• Hitung WERI (Weighted Education Risk Index)</li>
-                  <li>• Insight otomatis per provinsi</li>
-                  <li>• Rekomendasi kebijakan spesifik</li>
-                </ul>
-              </div>
-
-              {/* Action Button */}
-              <button
-                onClick={runAnalysis}
-                disabled={!csvFile || isAnalyzing}
-                className="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Menganalisis...
-                  </>
-                ) : (
-                  <>
-                    <BarChart3 size={20} />
-                    Mulai Analisis Kategori
-                  </>
-                )}
-              </button>
-
-              {/* Template Download */}
-              <button
-                onClick={downloadTemplate}
-                className="w-full mt-3 text-blue-600 hover:text-blue-800 text-sm flex items-center justify-center gap-2 py-2 border border-blue-200 rounded-lg hover:bg-blue-50"
-              >
-                <FileText size={14} />
-                Download Template CSV
-              </button>
-            </div>
-
-            {/* Results Panel (jika ada hasil) */}
-            {analysisResults && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Hasil Analisis</h3>
-                
-                {/* Summary Card */}
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle size={20} className="text-green-300" />
-                      <span className="font-medium">Analisis Selesai</span>
-                    </div>
-                    <span className="text-sm bg-white/20 px-2 py-1 rounded">
-                      {analysisResults.match_rate}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold">{analysisResults.total_matched}</div>
-                      <div className="text-xs opacity-90">Provinsi</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold">
-                        {analysisResults.kategori_distribusi?.RENDAH || 0}
-                      </div>
-                      <div className="text-xs opacity-90">RENDAH</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold">
-                        {analysisResults.kategori_distribusi?.TINGGI || 0}
-                      </div>
-                      <div className="text-xs opacity-90">TINGGI</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Category Filter */}
-                <div className="border rounded-lg p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Filter size={16} className="text-gray-600" />
-                    <span className="font-medium text-gray-800">Filter Kategori</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => filterByCategory('all')}
-                      className={`py-2 rounded text-sm font-medium ${selectedCategory === 'all' 
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                    >
-                      Semua
-                    </button>
-                    {Object.entries(CATEGORIES).map(([key, cat]) => (
-                      <button
-                        key={key}
-                        onClick={() => filterByCategory(key)}
-                        className={`py-2 rounded text-sm font-medium flex items-center justify-center gap-1 ${selectedCategory === key 
-                          ? 'border-2' 
-                          : 'border hover:bg-gray-50'}`}
-                        style={{
-                          backgroundColor: selectedCategory === key ? `${cat.color}20` : 'white',
-                          borderColor: selectedCategory === key ? cat.color : '#e5e7eb'
-                        }}
-                      >
-                        <div 
-                          className="w-2 h-2 rounded-full" 
-                          style={{ backgroundColor: cat.color }}
-                        ></div>
-                        <span>{key}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top Risky Provinces */}
-                {analysisResults.top_risky && analysisResults.top_risky.length > 0 && (
-                  <div className="border border-red-200 rounded-lg p-4 bg-red-50 mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertTriangle size={16} className="text-red-600" />
-                      <span className="font-medium text-red-800">Provinsi Berisiko Tinggi</span>
-                    </div>
-                    <div className="space-y-2">
-                      {analysisResults.top_risky.slice(0, 3).map((prov, idx) => (
-                        <div key={idx} className="bg-white p-2 rounded border">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">{prov.provinsi}</span>
-                            <div className="text-right">
-                              <div className="text-sm font-bold text-red-600">WERI: {prov.weri?.toFixed(1)}</div>
-                              <div className="text-xs text-gray-500">{prov.kategori}</div>
+                    const isiPopup = `
+                      <div style="font-family: inherit; min-width: 280px; color: #1e293b; padding: 5px;">
+                        <div style="background: ${analisis.warna}; color: white; padding: 15px; border-radius: 12px 12px 4px 4px; margin-bottom: 10px;">
+                          <div style="font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 0.1em;">${analisis.nama_provinsi}</div>
+                          <div style="font-size: 10px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">Analisis Strategis Wilayah</div>
+                        </div>
+                        <div style="padding: 10px;">
+                          <div style="font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">Wawasan Utama</div>
+                          <div style="font-size: 12px; color: #334155; line-height: 1.5; margin-bottom: 15px;">${wawasan}</div>
+                          <div style="font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">Matriks Partisipasi</div>
+                          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; text-align:center; border: 1px solid #f1f5f9;">
+                              <div style="font-size: 9px; font-weight: 900; color: #0369a1; text-transform: uppercase;">SD</div>
+                              <div style="font-size: 13px; font-weight: 900;">${dataAps.APS_7_12 || '-'}%</div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; text-align:center; border: 1px solid #f1f5f9;">
+                              <div style="font-size: 9px; font-weight: 900; color: #a16207; text-transform: uppercase;">SMP</div>
+                              <div style="font-size: 13px; font-weight: 900;">${dataAps.APS_13_15 || '-'}%</div>
                             </div>
                           </div>
                         </div>
+                      </div>
+                    `;
+                    lapisan.bindPopup(isiPopup);
+                  }}
+                />
+              )}
+              {Skala && <Skala position="bottomleft" metric={true} imperial={false} />}
+            </KontainerPeta>
+          )}
+
+          {/* KENDALI ZOOM (POJOK KIRI ATAS) */}
+          <div className="absolute top-8 left-8 z-[1000] flex flex-col gap-3">
+            <button onClick={() => petaRef.current?.zoomIn()} className="bg-[#0f172a] text-white p-3.5 rounded-2xl shadow-2xl hover:bg-blue-600 transition-all active:scale-90"><Plus size={20}/></button>
+            <button onClick={() => petaRef.current?.zoomOut()} className="bg-[#0f172a] text-white p-3.5 rounded-2xl shadow-2xl hover:bg-blue-600 transition-all active:scale-90"><Minus size={20}/></button>
+          </div>
+
+          {/* LEGENDA (POJOK KANAN ATAS) */}
+          <div className="absolute top-8 right-8 z-[1000] bg-white/95 backdrop-blur-xl p-5 rounded-[2rem] shadow-2xl border border-white/50">
+            <div className="space-y-3">
+              {Object.entries(KATEGORI).map(([kunci, nilai]) => (
+                <div key={kunci} className="flex items-center gap-4">
+                  <div className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ backgroundColor: nilai.warna }}></div>
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">{nilai.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* TABEL HASIL */}
+        <div className="mt-12 pb-24">
+          <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-[0_20px_60px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden">
+            <div className="p-8 md:p-12 border-b flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white">
+              <div>
+                <h3 className="text-2xl font-black text-[#0f172a] uppercase tracking-tight">Matriks Strategi Kebijakan</h3>
+                <p className="text-[11px] text-gray-400 font-bold uppercase mt-2 tracking-widest">
+                   Hasil Filter: <span className="text-blue-600 border-b-2 border-blue-100">{dataTerfilter.length}</span> Wilayah Ditemukan
+                </p>
+              </div>
+              
+              <div className="flex flex-wrap gap-4 w-full lg:w-auto relative">
+                {/* FILTER DROPDOWN */}
+                <div className="relative flex-grow sm:flex-grow-0">
+                  <button 
+                    onClick={() => { setMenuFilterTerbuka(!menuFilterTerbuka); setMenuUnduhTerbuka(false); }}
+                    className="w-full px-6 py-4 bg-white border-2 border-slate-100 text-[#0f172a] rounded-2xl text-[10px] font-black hover:border-blue-400 transition-all flex items-center justify-between gap-4 tracking-widest shadow-sm"
+                  >
+                    <div className="flex items-center gap-2 uppercase"><Filter size={16} /> {kategoriTerpilih}</div>
+                    <ChevronDown size={16} className={`transition-transform ${menuFilterTerbuka ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {menuFilterTerbuka && (
+                    <div className="absolute top-full mt-3 left-0 w-full sm:w-56 bg-[#0f172a] rounded-2xl shadow-2xl z-[1002] overflow-hidden border border-slate-800">
+                      {["SEMUA", "RENDAH", "SEDANG", "TINGGI"].map(kat => (
+                        <button 
+                          key={kat} 
+                          onClick={() => { setKategoriTerpilih(kat); setMenuFilterTerbuka(false); }}
+                          className={`w-full text-left px-6 py-4 text-[10px] font-black transition-all border-b border-slate-800 last:border-0 ${kategoriTerpilih === kat ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                        >
+                          {kat}
+                        </button>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Download Report Button */}
-                <button
-                  onClick={downloadReport}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
-                >
-                  <Download size={16} />
-                  Download Laporan Lengkap
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Right Panel - Map & Results */}
-          <div className="lg:col-span-2">
-            {/* Map Container */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden h-[600px] relative">
-              {isMapLoading && (
-                <div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-10">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-                    <p className="text-gray-600">Memuat peta...</p>
-                  </div>
-                </div>
-              )}
-              
-              {MapContainer && (
-                <MapContainer
-                  center={DEFAULT_CENTER}
-                  zoom={DEFAULT_ZOOM}
-                  className="h-full w-full"
-                  zoomControl={true}
-                  scrollWheelZoom={true}
-                >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  />
-                  
-                  {/* Render GeoJSON jika ada hasil */}
-                  {analysisResults?.matched_features?.features && selectedCategory === 'all' && (
-                    <GeoJSON
-                      data={{
-                        type: "FeatureCollection",
-                        features: analysisResults.matched_features.features
-                      }}
-                      style={(feature) => {
-                        const analysis = feature.properties?.analysis || {};
-                        const warna = analysis.warna || CATEGORIES.SEDANG.color;
-                        
-                        return {
-                          fillColor: warna,
-                          color: '#ffffff',
-                          weight: 2,
-                          fillOpacity: 0.6,
-                          opacity: 0.8
-                        };
-                      }}
-                      onEachFeature={(feature, layer) => {
-                        const props = feature.properties;
-                        const analysis = props.analysis || {};
-                        
-                        const popupContent = `
-                          <div style="font-family: sans-serif; min-width: 250px; max-width: 300px;">
-                            <!-- Header -->
-                            <div style="background: ${analysis.warna || '#ccc'}; color: white; padding: 10px; border-radius: 6px 6px 0 0;">
-                              <div style="font-weight: bold; font-size: 16px;">${analysis.nama_provinsi || 'Unknown'}</div>
-                              <div style="font-size: 12px; margin-top: 4px;">Kategori: ${analysis.kategori || 'N/A'}</div>
-                            </div>
-                            
-                            <!-- Metrics -->
-                            <div style="padding: 12px; background: #f8fafc;">
-                              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-                                <div style="text-align: center;">
-                                  <div style="font-weight: 600; color: #475569;">Rata² APS</div>
-                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.warna || '#475569'};">${analysis.rata_aps?.toFixed(1) || '0.0'}%</div>
-                                </div>
-                                <div style="text-align: center;">
-                                  <div style="font-weight: 600; color: #475569;">WERI</div>
-                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.weri > 30 ? '#ef4444' : analysis.weri > 20 ? '#f59e0b' : '#10b981'};">${analysis.weri?.toFixed(1) || '0.0'}</div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <!-- Insights -->
-                            <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
-                              <div style="font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 13px;">
-                                Insight:
-                              </div>
-                              <div style="font-size: 12px; color: #4b5563; max-height: 120px; overflow-y: auto;">
-                                ${analysis.insights ? 
-                                  analysis.insights.slice(0, 3).map(insight => 
-                                    `<div style="margin-bottom: 6px; padding-left: 8px; border-left: 2px solid ${analysis.warna || '#ccc'};">
-                                      ${insight}
-                                    </div>`
-                                  ).join('') : 
-                                  'Tidak ada insight tersedia'
-                                }
-                              </div>
-                            </div>
-                            
-                            <!-- APS Data -->
-                            <div style="padding: 12px; background: #f1f5f9; border-top: 1px solid #e5e7eb; font-size: 11px;">
-                              <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">Data APS:</div>
-                              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
-                                ${analysis.aps_data?.APS_7_12 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #0369a1;">SD</div>
-                                    <div>${analysis.aps_data.APS_7_12.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                                ${analysis.aps_data?.APS_13_15 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #a16207;">SMP</div>
-                                    <div>${analysis.aps_data.APS_13_15.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                                ${analysis.aps_data?.APS_16_18 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #15803d;">SMA</div>
-                                    <div>${analysis.aps_data.APS_16_18.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                                ${analysis.aps_data?.APS_19_23 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #7c3aed;">PT</div>
-                                    <div>${analysis.aps_data.APS_19_23.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                              </div>
-                            </div>
-                          </div>
-                        `;
-                        
-                        layer.bindPopup(popupContent);
-                      }}
-                    />
                   )}
-                  
-                  {/* Filtered features untuk kategori tertentu */}
-                  {analysisResults?.matched_features?.features && selectedCategory !== 'all' && (
-                    <GeoJSON
-                      data={{
-                        type: "FeatureCollection",
-                        features: analysisResults.matched_features.features.filter(
-                          f => f.properties?.analysis?.kategori === selectedCategory
-                        )
-                      }}
-                      style={(feature) => {
-                        const analysis = feature.properties?.analysis || {};
-                        const warna = analysis.warna || CATEGORIES[selectedCategory]?.color || CATEGORIES.SEDANG.color;
-                        
-                        return {
-                          fillColor: warna,
-                          color: '#ffffff',
-                          weight: 2,
-                          fillOpacity: 0.6,
-                          opacity: 0.8
-                        };
-                      }}
-                      onEachFeature={(feature, layer) => {
-                        const props = feature.properties;
-                        const analysis = props.analysis || {};
-                        
-                        const popupContent = `
-                          <div style="font-family: sans-serif; min-width: 250px; max-width: 300px;">
-                            <!-- Header -->
-                            <div style="background: ${analysis.warna || '#ccc'}; color: white; padding: 10px; border-radius: 6px 6px 0 0;">
-                              <div style="font-weight: bold; font-size: 16px;">${analysis.nama_provinsi || 'Unknown'}</div>
-                              <div style="font-size: 12px; margin-top: 4px;">Kategori: ${analysis.kategori || 'N/A'}</div>
-                            </div>
-                            
-                            <!-- Metrics -->
-                            <div style="padding: 12px; background: #f8fafc;">
-                              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-                                <div style="text-align: center;">
-                                  <div style="font-weight: 600; color: #475569;">Rata² APS</div>
-                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.warna || '#475569'};">${analysis.rata_aps?.toFixed(1) || '0.0'}%</div>
-                                </div>
-                                <div style="text-align: center;">
-                                  <div style="font-weight: 600; color: #475569;">WERI</div>
-                                  <div style="font-size: 18px; font-weight: bold; color: ${analysis.weri > 30 ? '#ef4444' : analysis.weri > 20 ? '#f59e0b' : '#10b981'};">${analysis.weri?.toFixed(1) || '0.0'}</div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <!-- Insights -->
-                            <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
-                              <div style="font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 13px;">
-                                Insight:
-                              </div>
-                              <div style="font-size: 12px; color: #4b5563; max-height: 120px; overflow-y: auto;">
-                                ${analysis.insights ? 
-                                  analysis.insights.slice(0, 3).map(insight => 
-                                    `<div style="margin-bottom: 6px; padding-left: 8px; border-left: 2px solid ${analysis.warna || '#ccc'};">
-                                      ${insight}
-                                    </div>`
-                                  ).join('') : 
-                                  'Tidak ada insight tersedia'
-                                }
-                              </div>
-                            </div>
-                            
-                            <!-- APS Data -->
-                            <div style="padding: 12px; background: #f1f5f9; border-top: 1px solid #e5e7eb; font-size: 11px;">
-                              <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">Data APS:</div>
-                              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
-                                ${analysis.aps_data?.APS_7_12 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #0369a1;">SD</div>
-                                    <div>${analysis.aps_data.APS_7_12.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                                ${analysis.aps_data?.APS_13_15 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #a16207;">SMP</div>
-                                    <div>${analysis.aps_data.APS_13_15.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                                ${analysis.aps_data?.APS_16_18 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #15803d;">SMA</div>
-                                    <div>${analysis.aps_data.APS_16_18.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                                ${analysis.aps_data?.APS_19_23 !== undefined ? 
-                                  `<div>
-                                    <div style="font-weight: 500; color: #7c3aed;">PT</div>
-                                    <div>${analysis.aps_data.APS_19_23.toFixed(1)}%</div>
-                                  </div>` : ''
-                                }
-                              </div>
-                            </div>
-                          </div>
-                        `;
-                        
-                        layer.bindPopup(popupContent);
-                      }}
-                    />
-                  )}
-                  
-                  <ScaleControl position="bottomleft" />
-                </MapContainer>
-              )}
-            </div>
-
-            {/* Stats & Legend */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-              {/* Category Distribution */}
-              {analysisResults?.kategori_distribusi && (
-                <div className="bg-white rounded-xl shadow-lg p-4">
-                  <h4 className="font-medium text-gray-800 mb-3">Distribusi Kategori</h4>
-                  <div className="space-y-3">
-                    {Object.entries(analysisResults.kategori_distribusi).map(([kategori, count]) => (
-                      <div key={kategori} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span style={{ color: CATEGORIES[kategori]?.color || '#999' }}>
-                            {CATEGORIES[kategori]?.icon || '⚫'}
-                          </span>
-                          <span className="text-sm">{kategori}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${(count / analysisResults.total_matched) * 100}%`,
-                                backgroundColor: CATEGORIES[kategori]?.color || '#999'
-                              }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium">{count}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
-              )}
 
-              {/* Legend */}
-              <div className="bg-white rounded-xl shadow-lg p-4">
-                <h4 className="font-medium text-gray-800 mb-3">Legenda Kategori</h4>
-                <div className="space-y-3">
-                  {Object.entries(CATEGORIES).map(([key, cat]) => (
-                    <div key={key} className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded" 
-                        style={{ backgroundColor: cat.color }}
-                      ></div>
-                      <div>
-                        <p className="text-sm font-medium">{key}</p>
-                        <p className="text-xs text-gray-500">{cat.label}</p>
-                      </div>
+                {/* DOWNLOAD DROPDOWN */}
+                <div className="relative flex-grow sm:flex-grow-0">
+                  <button 
+                    onClick={() => { setMenuUnduhTerbuka(!menuUnduhTerbuka); setMenuFilterTerbuka(false); }}
+                    disabled={!hasilAnalisis}
+                    className="w-full px-8 py-4 bg-[#0f172a] text-white rounded-2xl text-[10px] font-black hover:bg-blue-600 transition-all flex items-center justify-between gap-4 tracking-widest shadow-xl shadow-slate-200 disabled:opacity-20 active:scale-95"
+                  >
+                    <div className="flex items-center gap-2 uppercase"><Download size={16} /> UNDUH</div>
+                    <ChevronDown size={16} />
+                  </button>
+
+                  {menuUnduhTerbuka && (
+                    <div className="absolute top-full mt-3 right-0 w-full sm:w-56 bg-[#0f172a] rounded-2xl shadow-2xl z-[1002] overflow-hidden border border-slate-800">
+                      {['GEOJSON', 'JSON', 'EXCEL', 'CSV'].map(format => (
+                        <button 
+                          key={format} 
+                          onClick={() => eksporData(format)}
+                          className="w-full text-left px-6 py-4 text-[10px] font-black text-slate-400 hover:text-white hover:bg-slate-800 transition-all border-b border-slate-800 last:border-0 flex items-center gap-3 uppercase tracking-widest"
+                        >
+                          <FileText size={16} className="text-blue-500" /> {format}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <span>📊 Analisis Pendidikan 3 Kategori</span>
-              {analysisResults && (
-                <span className="text-gray-700">
-                  • 🎯 {analysisResults.total_matched} provinsi dianalisis
-                </span>
-              )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-50/50 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    <th className="px-10 py-10 text-center">No</th>
+                    <th className="px-10 py-10">Wilayah</th>
+                    <th className="px-10 py-10 text-center">Indeks Resiko</th>
+                    <th className="px-10 py-10">Status</th>
+                    <th className="px-10 py-10">Rekomendasi Strategis</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {dataTerfilter.length > 0 ? dataTerfilter.map((fitur, indeks) => {
+                    const data = fitur.properties.analysis;
+                    const rekUtama = data.rekomendasi?.[0];
+                    const deskripsiKebijakan = rekUtama?.actions?.join(". ") + ".";
+                    
+                    return (
+                      <tr key={indeks} className="hover:bg-slate-50/40 transition-all group">
+                        <td className="px-10 py-10 text-center text-[11px] font-black text-slate-300 group-hover:text-blue-500 transition-colors">{indeks + 1}</td>
+                        <td className="px-10 py-10 text-sm font-black text-[#0f172a] uppercase tracking-tight">{data.nama_provinsi}</td>
+                        <td className="px-10 py-10 text-center text-sm font-black text-[#0f172a] font-mono">{data.weri}</td>
+                        <td className="px-10 py-10">
+                          <span className="px-5 py-2.5 rounded-xl text-[10px] font-black tracking-widest border-2 uppercase bg-white shadow-sm" 
+                                style={{ borderColor: data.warna + '40', color: '#0f172a' }}>
+                            {data.kategori}
+                          </span>
+                        </td>
+                        <td className="px-10 py-10 max-w-xl text-[#0f172a]">
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest underline decoration-2 underline-offset-4">{rekUtama?.title || "STRATEGI"}</p>
+                            <p className="text-[13px] font-bold leading-relaxed italic opacity-70 group-hover:opacity-100 transition-opacity">
+                              "{deskripsiKebijakan}"
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr><td colSpan="5" className="py-32 text-center"><div className="flex flex-col items-center opacity-20"><AlertCircle size={60}/><p className="text-xs font-black uppercase tracking-widest mt-4">DATA TIDAK TERSEDIA</p></div></td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div className="text-gray-400">© 2024 Sistem Analisis Pendidikan</div>
           </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

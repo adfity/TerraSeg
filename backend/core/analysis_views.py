@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import io
 from datetime import datetime
-import re
 import os
 from dotenv import load_dotenv
 
@@ -27,9 +26,9 @@ class PendidikanAnalytics:
     def __init__(self):
         # Warna untuk 3 kategori
         self.colors = {
-            "RENDAH": "#d73027",    # Merah
-            "SEDANG": "#fee08b",     # Kuning
-            "TINGGI": "#1a9850"      # Hijau
+            "RENDAH": "#ef4444",    # Merah
+            "SEDANG": "#f59e0b",    # Kuning
+            "TINGGI": "#10b981"     # Hijau
         }
         
         # Bobot untuk WERI
@@ -145,10 +144,10 @@ class PendidikanAnalytics:
                 'priority': 'Tinggi',
                 'title': 'Intervensi Khusus',
                 'actions': [
-                    'Program wajib belajar 12 tahun intensif',
-                    'Beasiswa KIP Plus untuk keluarga miskin',
-                    'Pembangunan sekolah baru di daerah terpencil',
-                    'Guru kontrak daerah 3T dengan insentif khusus'
+                    'Percepatan Wajib Belajar 12 Tahun melalui PIP (Program Indonesia Pintar) Afirmasi',
+                    'Pembangunan Unit Sekolah Baru (USB) dan Ruang Kelas Baru (RKB) di lokasi prioritas',
+                    'Implementasi Dana Alokasi Khusus (DAK) Fisik untuk rehabilitasi sarana pendidikan rusak',
+                    'Pemenuhan kuota guru melalui jalur PPPK dengan prioritas penempatan wilayah 3T'
                 ]
             })
         elif kategori == "SEDANG":
@@ -156,10 +155,10 @@ class PendidikanAnalytics:
                 'priority': 'Sedang',
                 'title': 'Penguatan Program',
                 'actions': [
-                    'Optimalisasi BOS dan BOP',
-                    'Pelatihan guru berkelanjutan',
-                    'Kampanye "Ayo Sekolah"',
-                    'Kerjasama dengan industri lokal'
+                    'Optimalisasi Dana BOS (Bantuan Operasional Sekolah) berbasis kinerja dan rapor pendidikan',
+                    'Penguatan kompetensi pendidik melalui integrasi Platform Merdeka Mengajar (PMM)',
+                    'Revitalisasi pendidikan vokasi (SMK) melalui program Link and Match dengan dunia industri',
+                    'Pengembangan literasi dan numerasi berbasis standar asesmen nasional'
                 ]
             })
         else:
@@ -167,10 +166,10 @@ class PendidikanAnalytics:
                 'priority': 'Rendah',
                 'title': 'Pemeliharaan & Inovasi',
                 'actions': [
-                    'Digitalisasi pembelajaran',
-                    'Pengembangan STEM education',
-                    'Beasiswa prestasi',
-                    'Program pertukaran pelajar'
+                    'Implementasi transformasi digital pendidikan melalui bantuan perangkat TIK sekolah',
+                    'Pengembangan kurikulum berbasis talenta tinggi dan penguatan STEM (Science, Technology, Engineering, and Math)',
+                    'Pemberian beasiswa prestasi tingkat lanjut dan sertifikasi kompetensi internasional',
+                    'Perluasan kolaborasi akademik internasional melalui program pertukaran pelajar dan guru'
                 ]
             })
         
@@ -200,6 +199,7 @@ class PendidikanAnalytics:
         
         return recommendations
 
+
 # HELPER FUNCTIONS
 def normalize_name(name):
     """Normalisasi nama provinsi"""
@@ -212,6 +212,7 @@ def normalize_name(name):
     abbreviations = {
         'KEP.': 'KEPULAUAN',
         'DIY': 'DAERAH ISTIMEWA YOGYAKARTA',
+        'DI': 'DAERAH ISTIMEWA',
         'DKI': 'DAERAH KHUSUS IBUKOTA JAKARTA',
         'JATIM': 'JAWA TIMUR',
         'JATENG': 'JAWA TENGAH',
@@ -234,24 +235,17 @@ def normalize_name(name):
     
     return name.strip()
 
-# MAIN ANALYSIS API
-@api_view(['POST'])
-def analyze_aps_csv(request):
-    """Analisis CSV APS dengan metode sederhana"""
-    csv_file = request.FILES.get('csv_file')
+
+def read_file_to_dataframe(file):
+    """Baca file CSV atau XLSX menjadi DataFrame"""
+    filename = file.name.lower()
     
-    if not csv_file:
-        return Response({"error": "File CSV tidak ditemukan"}, status=400)
-    
-    try:
-        import pandas as pd
-        import numpy as np
-        import io
-        
-        # Baca CSV
-        content = csv_file.read().decode('utf-8-sig')
-        
-        # Deteksi separator
+    if filename.endswith('.xlsx') or filename.endswith('.xls'):
+        # Baca Excel
+        df = pd.read_excel(file)
+    elif filename.endswith('.csv'):
+        # Baca CSV dengan deteksi separator
+        content = file.read().decode('utf-8-sig')
         for sep in [',', ';', '\t']:
             try:
                 df = pd.read_csv(io.StringIO(content), sep=sep)
@@ -259,9 +253,27 @@ def analyze_aps_csv(request):
                     break
             except:
                 continue
+    else:
+        raise ValueError("Format file tidak didukung. Gunakan CSV atau XLSX")
+    
+    return df
+
+
+# MAIN ANALYSIS API
+@api_view(['POST'])
+def analyze_aps_csv(request):
+    """Analisis CSV/XLSX APS - TIDAK AUTO SAVE"""
+    file = request.FILES.get('csv_file') or request.FILES.get('file')
+    
+    if not file:
+        return Response({"error": "File tidak ditemukan"}, status=400)
+    
+    try:
+        # Baca file (support CSV & XLSX)
+        df = read_file_to_dataframe(file)
         
         if len(df.columns) < 2:
-            return Response({"error": "Format CSV tidak valid"}, status=400)
+            return Response({"error": "Format file tidak valid"}, status=400)
         
         # Standarisasi kolom
         df.columns = [str(col).strip().upper() for col in df.columns]
@@ -425,6 +437,9 @@ def analyze_aps_csv(request):
         total_rows = len(df)
         
         # Cari provinsi dengan kondisi terburuk
+        sorted_by_weri = []
+        sorted_by_sma = []
+        
         if analysis_summary:
             # Peringkat berdasarkan WERI tertinggi
             sorted_by_weri = sorted(
@@ -469,13 +484,9 @@ def analyze_aps_csv(request):
                     ]
                 })
         
-        # Simpan hasil
-        analysis_id = str(uuid.uuid4())
-        save_to_db(analysis_id, analysis_summary, kategori_counts, csv_file.name)
-        
+        # TIDAK AUTO SAVE - hanya return data
         return Response({
             'status': 'success',
-            'analysis_id': analysis_id,
             'total_data': total_rows,
             'total_matched': total_matched,
             'match_rate': f"{total_matched}/{total_rows}",
@@ -486,7 +497,7 @@ def analyze_aps_csv(request):
             },
             'analysis_summary': analysis_summary,
             'national_recommendations': national_recommendations,
-            'top_risky': sorted_by_weri[:3] if analysis_summary else [],
+            'top_risky': sorted_by_weri,
             'colors': analytics.colors
         })
         
@@ -496,153 +507,151 @@ def analyze_aps_csv(request):
         traceback.print_exc()
         return Response({
             "error": str(e),
-            "message": "Gagal memproses file CSV"
+            "message": "Gagal memproses file"
         }, status=500)
 
-def save_to_db(analysis_id, summary, kategori_counts, filename):
-    """Simpan hasil analisis ke database"""
-    try:
-        document = {
-            "analysis_id": analysis_id,
-            "name": "Analisis Pendidikan Sederhana",
-            "timestamp": datetime.now().isoformat(),
-            "filename": filename,
-            "summary": summary,
-            "kategori_counts": kategori_counts,
-            "total_provinces": len(summary)
-        }
-        
-        mongo_db["education_analysis"].insert_one(document)
-        print(f"DEBUG: Analysis saved: {analysis_id}")
-        
-    except Exception as e:
-        print(f"DEBUG: Error saving: {e}")
 
-# TEMPLATE API
-@api_view(['GET'])
-def download_aps_template(request):
-    """Download template CSV sederhana"""
-    template = """Provinsi,7-12,13-15,16-18,19-23
-ACEH,99.38,97.65,80.94,34.95
-SUMATERA UTARA,99.54,97.67,77.51,30.48
-SUMATERA BARAT,99.63,97.00,85.04,38.84
-RIAU,99.74,95.47,77.42,33.03
-JAMBI,99.45,95.59,74.39,25.23
-SUMATERA SELATAN,99.50,95.68,73.78,21.24
-BENGKULU,99.29,97.01,80.48,34.18
-LAMPUNG,99.62,95.72,75.35,20.68
-KEP. BANGKA BELITUNG,99.49,92.90,76.03,21.13
-KEP. RIAU,99.71,98.60,88.24,26.61
-DKI JAKARTA,99.32,98.74,88.22,34.21
-JAWA BARAT,99.50,96.58,75.80,27.98
-JAWA TENGAH,99.54,97.05,77.97,27.44
-DI YOGYAKARTA,99.61,99.60,93.03,54.72
-JAWA TIMUR,99.28,97.15,80.96,28.90
-BANTEN,99.52,97.11,73.84,24.45
-BALI,99.57,98.88,90.68,34.32
-NUSA TENGGARA BARAT,99.38,96.92,79.21,28.88
-NUSA TENGGARA TIMUR,98.89,95.44,76.65,31.41
-KALIMANTAN BARAT,98.95,94.36,70.95,26.84
-KALIMANTAN TENGAH,99.45,95.74,70.76,24.91
-KALIMANTAN SELATAN,99.14,93.82,75.16,30.91
-KALIMANTAN TIMUR,99.64,97.34,84.15,33.15
-KALIMANTAN UTARA,99.14,95.96,81.93,29.25
-SULAWESI UTARA,99.28,96.11,71.45,25.57
-SULAWESI TENGAH,98.56,94.58,75.36,26.50
-SULAWESI SELATAN,99.21,94.22,75.94,33.80
-SULAWESI TENGGARA,99.05,96.53,79.58,33.67
-GORONTALO,98.85,92.35,72.00,35.02
-SULAWESI BARAT,98.56,92.30,73.22,23.55
-MALUKU,99.56,97.75,77.28,29.66
-MALUKU UTARA,99.04,97.08,79.62,25.38
-PAPUA BARAT,97.59,96.22,77.53,34.53
-PAPUA,97.51,97.32,81.78,38.16
-PAPUA SELATAN,91.65,89.29,66.97,27.57
-PAPUA TENGAH,80.13,67.86,44.61,15.48
-
-# Format:
-# Kolom 1: Nama Provinsi (bisa pakai singkatan)
-# Kolom 2: APS 7-12 tahun (SD)
-# Kolom 3: APS 13-15 tahun (SMP)
-# Kolom 4: APS 16-18 tahun (SMA)
-# Kolom 5: APS 19-23 tahun (Perguruan Tinggi)"""
-    
-    response = Response(template, content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="template-aps-sederhana.csv"'
-    return response
-
-# SIMPLE VALIDATION
+# SAVE ANALYSIS API - MANUAL SAVE
 @api_view(['POST'])
-def validate_csv(request):
-    """Validasi sederhana untuk CSV"""
-    csv_file = request.FILES.get('csv_file')
-    
-    if not csv_file:
-        return Response({"error": "File CSV tidak ditemukan"}, status=400)
-    
-    try:
-        import pandas as pd
-        import io
-        
-        content = csv_file.read().decode('utf-8-sig')
-        
-        # Coba baca CSV
-        for sep in [',', ';', '\t']:
-            try:
-                df = pd.read_csv(io.StringIO(content), sep=sep)
-                if len(df.columns) > 1:
-                    break
-            except:
-                continue
-        
-        # Cek kolom
-        df.columns = [str(col).strip().upper() for col in df.columns]
-        
-        # Cari kolom yang mungkin berisi nama provinsi
-        has_province = any(kw in str(col) for col in df.columns for kw in ['PROVINSI', 'PROV', 'NAMA'])
-        
-        # Cek apakah ada data numerik
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        
-        return Response({
-            "valid": True,
-            "rows": len(df),
-            "columns": len(df.columns),
-            "has_province_column": has_province,
-            "has_numeric_data": len(numeric_cols) > 0,
-            "sample": df.head(3).to_dict('records')
-        })
-        
-    except Exception as e:
-        return Response({
-            "valid": False,
-            "error": str(e)
-        }, status=400)
-    """Alias untuk kompatibilitas dengan frontend lama"""
-    return analyze_aps_csv(request)
-
-
-    """Save detection results"""
+def save_analysis(request):
+    """Simpan hasil analisis dengan nama custom"""
     try:
         data = request.data
-        result = mongo_db["features"].insert_one(data)
+        analysis_name = data.get('name', 'Analisis Tanpa Nama')
+        analysis_data = data.get('analysis_data')
+        
+        if not analysis_data:
+            return Response({"error": "Data analisis tidak ditemukan"}, status=400)
+        
+        # Generate ID
+        analysis_id = str(uuid.uuid4())
+        
+        # Siapkan dokumen untuk disimpan (format sama seperti download JSON)
+        document = {
+            "analysis_id": analysis_id,
+            "name": analysis_name,
+            "timestamp": datetime.now().isoformat(),
+            "status": analysis_data.get('status'),
+            "total_data": analysis_data.get('total_data'),
+            "total_matched": analysis_data.get('total_matched'),
+            "match_rate": analysis_data.get('match_rate'),
+            "kategori_distribusi": analysis_data.get('kategori_distribusi'),
+            "matched_features": analysis_data.get('matched_features'),
+            "analysis_summary": analysis_data.get('analysis_summary'),
+            "national_recommendations": analysis_data.get('national_recommendations'),
+            "top_risky": analysis_data.get('top_risky'),
+            "colors": analysis_data.get('colors')
+        }
+        
+        # Simpan ke MongoDB
+        result = mongo_db["education_analysis"].insert_one(document)
         
         return Response({
             "status": "success",
-            "feature_id": str(result.inserted_id)
+            "message": f"Analisis '{analysis_name}' berhasil disimpan",
+            "analysis_id": analysis_id,
+            "saved_at": document["timestamp"]
         })
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
-
-
-    """Delete a feature"""
-    try:
-        from bson.objectid import ObjectId
-        result = mongo_db["features"].delete_one({"_id": ObjectId(feature_id)})
         
-        if result.deleted_count > 0:
-            return Response({"status": "success"})
-        else:
-            return Response({"error": "Feature not found"}, status=404)
     except Exception as e:
-        return Response({"error": str(e)}, status=500)
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            "error": str(e),
+            "message": "Gagal menyimpan analisis"
+        }, status=500)
+
+
+# GET ANALYSIS LIST
+@api_view(['GET'])
+def get_analysis_list(request):
+    """Get list semua analisis yang tersimpan"""
+    try:
+        # Ambil semua analisis, sorted by timestamp desc
+        cursor = mongo_db["education_analysis"].find(
+            {},
+            {
+                '_id': 0,
+                'analysis_id': 1,
+                'name': 1,
+                'timestamp': 1,
+                'total_matched': 1,
+                'kategori_distribusi': 1
+            }
+        ).sort('timestamp', -1)
+        
+        results = list(cursor)
+        
+        return Response({
+            "status": "success",
+            "count": len(results),
+            "results": results
+        })
+        
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            "error": str(e),
+            "message": "Gagal mengambil daftar analisis"
+        }, status=500)
+
+
+# GET ANALYSIS DETAIL
+@api_view(['GET'])
+def get_analysis_detail(request, analysis_id):
+    """Get detail analisis berdasarkan ID"""
+    try:
+        # Cari analisis berdasarkan analysis_id
+        result = mongo_db["education_analysis"].find_one(
+            {"analysis_id": analysis_id},
+            {'_id': 0}
+        )
+        
+        if not result:
+            return Response({
+                "error": "Analisis tidak ditemukan"
+            }, status=404)
+        
+        return Response(result)
+        
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            "error": str(e),
+            "message": "Gagal mengambil detail analisis"
+        }, status=500)
+
+
+# DELETE ANALYSIS
+@api_view(['DELETE'])
+def delete_analysis(request, analysis_id):
+    """Hapus analisis berdasarkan ID"""
+    try:
+        result = mongo_db["education_analysis"].delete_one(
+            {"analysis_id": analysis_id}
+        )
+        
+        if result.deleted_count == 0:
+            return Response({
+                "error": "Analisis tidak ditemukan"
+            }, status=404)
+        
+        return Response({
+            "status": "success",
+            "message": "Analisis berhasil dihapus"
+        })
+        
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            "error": str(e),
+            "message": "Gagal menghapus analisis"
+        }, status=500)
+

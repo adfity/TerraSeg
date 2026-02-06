@@ -19,9 +19,8 @@ urlpatterns = [
     
     # ============ EDUCATION ANALYSIS ============
     path('analyze-aps/', analysis_views.analyze_aps_csv, name='analyze-aps'),
-    path('template/aps/', analysis_views.download_aps_template, name='download-aps-template'),
-    path('validate-csv/', analysis_views.validate_csv, name='validate-csv'),
-    # path('analysis/history/', analysis_views.get_analysis_history, name='get-analysis-history'),
-    # path('analysis/<str:analysis_id>/', analysis_views.get_analysis_by_id, name='get-analysis-by-id'),
-    # path('analysis/<str:analysis_id>/delete/', analysis_views.delete_analysis, name='delete-analysis'),
+    path('save-analysis/', analysis_views.save_analysis, name='save-analysis'),
+    path('analysis/list/', analysis_views.get_analysis_list, name='get-analysis-list'),
+    path('analysis/<str:analysis_id>/', analysis_views.get_analysis_detail, name='get-analysis-detail'),
+    path('analysis/<str:analysis_id>/delete/', analysis_views.delete_analysis, name='delete-analysis'),
 ]

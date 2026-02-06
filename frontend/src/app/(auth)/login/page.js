@@ -11,6 +11,7 @@ import { SiGithub } from "react-icons/si";
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
+    // throw new Error('Ini error testing untuk lihat halaman error!');
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");

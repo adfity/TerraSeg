@@ -10,29 +10,24 @@ import MapStuff from './MapStuff';
 import GeoAI from './panel/geoai';
 import BasemapPanel, { BASEMAP_OPTIONS } from './panel/basemap';
 import LayersPanel from './panel/layers';
-import RadiusPanel from './panel/radius'
-import AnalysisPanel from './panel/analysis';
+import RadiusPanel from './panel/radius';
+import AnalysisPanel from './panel/analysis'; // IMPORT PANEL ANALYSIS
 
 export default function MainMap({ activePanel, setActivePanel }) {
-  // STATE UTAMA (hanya yang penting)
+  // STATE UTAMA
   const [currentBasemap, setCurrentBasemap] = useState(BASEMAP_OPTIONS[0].url);
   const [activeLayers, setActiveLayers] = useState([]);
   const [data, setData] = useState(null); // Data dari MongoDB
   const [previewData, setPreviewData] = useState([]);
   const [goHome, setGoHome] = useState(false);
   const [activeRadius, setActiveRadius] = useState(null);
-  const [analysisResults, setAnalysisResults] = useState(null);
+  
+  // STATE UNTUK ANALYSIS
+  const [activeAnalysisId, setActiveAnalysisId] = useState(null);
+  const [activeAnalysisData, setActiveAnalysisData] = useState(null);
+  
   // DATA RBI untuk pendidikan & kesehatan
   const [rbiData, setRbiData] = useState({});
-  
-  useEffect(() => {
-    // Jika panel analysis ditutup, hapus layer
-    if (activePanel !== 'analysis' && analysisResults) {
-      // Anda bisa tambahkan logic untuk menyimpan state analisis
-      // atau membersihkan layer peta jika perlu
-      console.log('Analysis panel closed');
-    }
-  }, [activePanel]);
 
   // Fetch data awal dari MongoDB
   useEffect(() => {
@@ -50,6 +45,28 @@ export default function MainMap({ activePanel, setActivePanel }) {
     
     fetchData();
   }, []);
+
+  // Fetch data analysis detail ketika activeAnalysisId berubah
+  useEffect(() => {
+    if (!activeAnalysisId) {
+      setActiveAnalysisData(null);
+      return;
+    }
+
+    const fetchAnalysisDetail = async () => {
+      try {
+        const response = await axios.get(`http://127.0.0.1:8000/api/analysis/${activeAnalysisId}/`);
+        setActiveAnalysisData(response.data);
+        toast.success('Data analisis dimuat');
+      } catch (error) {
+        console.error('Error fetching analysis detail:', error);
+        toast.error('Gagal memuat detail analisis');
+        setActiveAnalysisId(null);
+      }
+    };
+
+    fetchAnalysisDetail();
+  }, [activeAnalysisId]);
   
   // Fetch data RBI saat layer aktif
   useEffect(() => {
@@ -115,28 +132,36 @@ export default function MainMap({ activePanel, setActivePanel }) {
 
   return (
     <div className="h-screen w-full relative overflow-hidden bg-slate-900">
-        {/* PANEL KANAN (Basemap, Layers, radius) */}
-        {activePanel === 'basemap' && (
-            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white">
-            <BasemapPanel 
-                activeUrl={currentBasemap}
-                onSelect={(url) => setCurrentBasemap(url)}
-            />
-            </aside>
-        )}
-        
-        {activePanel === 'layers' && (
-            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white">
-            <LayersPanel 
-                activeLayers={activeLayers} 
-                onToggleLayer={toggleLayer}
-                rbiData={rbiData}
-                onToggleProvinsi={toggleProvinsi}
-            />
-            </aside>
-        )}
+      {/* PANEL KANAN */}
+      {activePanel === 'basemap' && (
+        <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900">
+          <BasemapPanel 
+            activeUrl={currentBasemap}
+            onSelect={(url) => setCurrentBasemap(url)}
+          />
+        </aside>
+      )}
+      
+      {activePanel === 'layers' && (
+        <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900">
+          <LayersPanel 
+            activeLayers={activeLayers} 
+            onToggleLayer={toggleLayer}
+            rbiData={rbiData}
+            onToggleProvinsi={toggleProvinsi}
+          />
+        </aside>
+      )}
 
-        
+      {activePanel === 'analysis' && (
+        <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900">
+          <AnalysisPanel 
+            onClose={() => setActivePanel(null)}
+            activeAnalysisId={activeAnalysisId}
+            setActiveAnalysisId={setActiveAnalysisId}
+          />
+        </aside>
+      )}
 
       {/* PETA UTAMA */}
       <MapContainer
@@ -163,6 +188,7 @@ export default function MainMap({ activePanel, setActivePanel }) {
           previewData={previewData}
           goHome={goHome}
           rbiData={rbiData}
+          activeAnalysisData={activeAnalysisData}
           
           // Handlers
           setGoHome={setGoHome}
@@ -179,28 +205,26 @@ export default function MainMap({ activePanel, setActivePanel }) {
         />
         
         {activePanel === 'radius' && (
-            <div className="leaflet-top leaflet-right !static pointer-events-none">
-                <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white pointer-events-auto">
-                {/* RadiusPanel akan dirender DI DALAM MapContainer */}
-                <RadiusPanel 
-                    activeRadius={activeRadius}
-                    setActiveRadius={setActiveRadius}
-                    onRadiusCreated={(radius) => {
-                    console.log('Radius dibuat:', radius);
-                    // Bisa tambahkan logic untuk fetch data dalam radius
-                    }}
-                    onRadiusCleared={(id) => {
-                    console.log('Radius dihapus:', id);
-                    }}
-                />
-                </aside>
-            </div>
+          <div className="leaflet-top leaflet-right !static pointer-events-none">
+            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900 pointer-events-auto">
+              <RadiusPanel 
+                activeRadius={activeRadius}
+                setActiveRadius={setActiveRadius}
+                onRadiusCreated={(radius) => {
+                  console.log('Radius dibuat:', radius);
+                }}
+                onRadiusCleared={(id) => {
+                  console.log('Radius dihapus:', id);
+                }}
+              />
+            </aside>
+          </div>
         )}
         
         {/* PANEL GEOAI */}
         {activePanel === 'geoai' && (
           <div className="leaflet-top leaflet-right !static">
-            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white pointer-events-auto">
+            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900 pointer-events-auto">
               <GeoAI 
                 onNewData={() => {
                   fetch('http://127.0.0.1:8000/api/features/')
@@ -214,14 +238,6 @@ export default function MainMap({ activePanel, setActivePanel }) {
               />
             </aside>
             <div className="detection-frame"></div>
-          </div>
-        )}
-        
-        {activePanel === 'analysis' && (
-          <div className="leaflet-top leaflet-right !static pointer-events-none">
-            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-xl shadow-xl z-[1050] bg-white pointer-events-auto">
-              <AnalysisPanel />
-            </aside>
           </div>
         )}
 

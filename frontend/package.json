@@ -24,8 +24,6 @@
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "sonner": "^2.0.7",
-    "sweetalert2": "^11.26.17",
-    "sweetalert2-react-content": "^5.1.1",
     "xlsx": "^0.18.5",
     "zod": "^4.3.5"
   },

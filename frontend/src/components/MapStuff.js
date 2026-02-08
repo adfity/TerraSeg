@@ -1,28 +1,43 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import L from 'leaflet';
 import { 
   GeoJSON, Polygon, Popup, useMap
 } from 'react-leaflet';
 import { 
-  BarChart3, Home, Map as MapIcon, Layers, LocateFixed, Plus, Minus 
+  Home, Map as MapIcon, Layers, LocateFixed, Plus, Minus 
 } from 'lucide-react';
 import { useBoundaryData, BoundaryLayer } from './panel/layers';
 import { toast } from 'react-hot-toast';
 
-// ZOOM BUTTONS
+// ZOOM BUTTONS - KANAN BAWAH
 export function ZoomButtons() {
   const map = useMap();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
     <div className="fixed bottom-6 right-6 z-[1100]">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
-        <button onClick={() => map.zoomIn()} className="w-12 h-12 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">
-          <Plus size={24} />
+        <button 
+          onClick={() => map.zoomIn()} 
+          className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors`}
+        >
+          <Plus size={isMobile ? 20 : 24} />
         </button>
-        <div className="h-[2px] bg-slate-300 dark:bg-slate-700" />
-        <button onClick={() => map.zoomOut()} className="w-12 h-12 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">
-          <Minus size={24} />
+        <div className="h-[2px] bg-slate-200 dark:bg-slate-700" />
+        <button 
+          onClick={() => map.zoomOut()} 
+          className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors`}
+        >
+          <Minus size={isMobile ? 20 : 24} />
         </button>
       </div>
     </div>
@@ -40,17 +55,59 @@ export function MapReset({ trigger, onDone }) {
   return null;
 }
 
-// SIDEBAR BUTTONS
+// SIDEBAR BUTTONS - Dynamic icons untuk light/dark mode
 export function SidebarButtons({ activePanel, setActivePanel, setGoHome }) {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkTheme = () => {
+      const theme = document.documentElement.getAttribute('data-theme');
+      setIsDark(theme === 'dark');
+    };
+    
+    checkMobile();
+    checkTheme();
+    
+    window.addEventListener('resize', checkMobile);
+    
+    // Observer untuk theme changes
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      observer.disconnect();
+    };
+  }, []);
+
   const buttons = [
-    { id: 'home', icon: <Home size={20} />, label: 'Default View' },
-    { id: 'basemap', icon: <MapIcon size={20} />, label: 'Basemap' },
-    { id: 'layers', icon: <Layers size={20} />, label: 'Layers' },
-    { id: 'radius', icon: <div className="w-7 h-7"><img src="/icons/radius.png" className="w-full h-full" /></div>, label: 'Radius' },
-    { id: 'geoai', icon: <div className="w-7 h-7"><img src="/icons/wgeo.png" className="w-full h-full" /></div>, label: 'GeoAI' },
-    { id: 'analysis', icon: <div className="w-7 h-7"><img src="/icons/wanalis.png" className="w-full h-full" /></div>, label: 'analisis' },
-    // { id: 'analysis', icon: <BarChart3 size={20} />, label: 'Analisis' },
-    { id: 'share', icon: <LocateFixed size={20} />, label: 'Lokasi Saya' },
+    { id: 'home', icon: <Home size={18} />, label: 'Home' },
+    { id: 'basemap', icon: <MapIcon size={18} />, label: 'Basemap' },
+    { id: 'layers', icon: <Layers size={18} />, label: 'Layers' },
+    { 
+      id: 'radius', 
+      icon: <div className="w-6 h-6">
+        <img src={isDark ? "/icons/Wradius.png" : "/icons/bradius.png"} className="w-full h-full" alt="Radius" />
+      </div>, 
+      label: 'Radius' 
+    },
+    { 
+      id: 'geoai', 
+      icon: <div className="w-6 h-6">
+        <img src={isDark ? "/icons/wgeo.png" : "/icons/bgeo.png"} className="w-full h-full" alt="GeoAI" />
+      </div>, 
+      label: 'GeoAI' 
+    },
+    { 
+      id: 'analysis', 
+      icon: <div className="w-6 h-6">
+        <img src={isDark ? "/icons/wanalis.png" : "/icons/banalis.png"} className="w-full h-full" alt="Analisis" />
+      </div>, 
+      label: 'Analisis' 
+    },
+    { id: 'share', icon: <LocateFixed size={18} />, label: 'Lokasi' },
   ];
 
   const handleButtonClick = (btnId) => {
@@ -59,23 +116,55 @@ export function SidebarButtons({ activePanel, setActivePanel, setGoHome }) {
       setActivePanel(null);
       toast.success('Kembali ke tampilan default');
     } else {
-      // Toggle panel (termasuk analysis)
       setActivePanel(activePanel === btnId ? null : btnId);
     }
   };
 
+  if (isMobile) {
+    // MOBILE: Footer tengah horizontal
+    return (
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[1100]">
+        <div className="flex flex-row items-center gap-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md px-3 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-2xl">
+          {buttons.map(btn => (
+            <button 
+              key={btn.id} 
+              onClick={() => handleButtonClick(btn.id)} 
+              className={`
+                w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300
+                ${activePanel === btn.id 
+                  ? 'bg-cyan-500 text-white scale-110 shadow-lg' 
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }
+              `}
+            >
+              {activePanel === btn.id ? <span className="text-base font-bold">≫</span> : btn.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // DESKTOP: Sidebar kanan vertikal
   return (
     <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[1100]">
-      <div className="flex flex-col space-y-3 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-xl">
+      <div className="flex flex-col space-y-2 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-xl">
         {buttons.map(btn => (
-          <button key={btn.id} onClick={() => handleButtonClick(btn.id)} className={`
-            group relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300
-            ${activePanel === btn.id ? 'bg-cyan-500 text-white scale-110' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}
-          `}>
+          <button 
+            key={btn.id} 
+            onClick={() => handleButtonClick(btn.id)} 
+            className={`
+              group relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300
+              ${activePanel === btn.id 
+                ? 'bg-cyan-500 text-white scale-110' 
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }
+            `}
+          >
             <div className="transition-transform duration-300 group-hover:scale-110">
               {activePanel === btn.id ? <span className="text-xl font-bold">≫</span> : btn.icon}
             </div>
-            <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap bg-slate-800 dark:bg-slate-700 text-white text-[11px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap bg-slate-800 dark:bg-slate-700 text-white text-[11px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
               {btn.label}
             </span>
           </button>
@@ -85,7 +174,7 @@ export function SidebarButtons({ activePanel, setActivePanel, setGoHome }) {
   );
 }
 
-// PREVIEW LAYER
+// PREVIEW LAYER - Popup dengan LUAS
 export function PreviewLayer({ previewData, setPreviewData, getCategoryColor }) {
   const map = useMap();
   
@@ -93,6 +182,10 @@ export function PreviewLayer({ previewData, setPreviewData, getCategoryColor }) 
     const newData = [...previewData];
     newData.splice(idx, 1);
     setPreviewData(newData);
+    
+    // Force close all popups
+    map.closePopup();
+    
     toast.success('Preview dihapus');
   };
 
@@ -104,16 +197,20 @@ export function PreviewLayer({ previewData, setPreviewData, getCategoryColor }) 
         if (!obj.segmentation) return null;
         
         const scanCenterPixel = map.latLngToContainerPoint([obj.lat, obj.lng]);
+        const halfSize = (obj.capture_size || 640) / 2;
+        
         const polygonCoords = obj.segmentation.map(point => {
           const latLng = map.containerPointToLatLng([
-            scanCenterPixel.x + (point[0] - 320),
-            scanCenterPixel.y + (point[1] - 320)
+            scanCenterPixel.x + (point[0] - halfSize),
+            scanCenterPixel.y + (point[1] - halfSize)
           ]);
           return [latLng.lat, latLng.lng];
         });
 
         return (
-          <Polygon key={`preview-${idx}`} positions={polygonCoords}
+          <Polygon 
+            key={`preview-${idx}`} 
+            positions={polygonCoords}
             pathOptions={{ 
               color: getCategoryColor(obj.kategori),
               fillColor: getCategoryColor(obj.kategori),
@@ -124,7 +221,15 @@ export function PreviewLayer({ previewData, setPreviewData, getCategoryColor }) 
             <Popup>
               <div className="p-1">
                 <p className="font-bold text-sm uppercase">{obj.kategori}</p>
-                <button onClick={() => removeObject(idx)} className="mt-2 w-full bg-red-500 text-white text-[10px] py-1 rounded">
+                {obj.luas_m2 && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    Luas: <span className="font-bold text-blue-600">{obj.luas_m2} m²</span>
+                  </p>
+                )}
+                <button 
+                  onClick={() => removeObject(idx)} 
+                  className="mt-2 w-full bg-red-500 hover:bg-red-600 text-white text-[10px] py-1 rounded transition"
+                >
                   Batalkan
                 </button>
               </div>
@@ -136,7 +241,7 @@ export function PreviewLayer({ previewData, setPreviewData, getCategoryColor }) 
   );
 }
 
-// SAVED DATA LAYER
+// SAVED DATA LAYER - Popup dengan LUAS
 export function SavedDataLayer({ data, onRefreshData, getCategoryColor }) {
   const handleDelete = async (feature_id) => {
     toast.custom((t) => (
@@ -193,9 +298,14 @@ export function SavedDataLayer({ data, onRefreshData, getCategoryColor }) {
           <Popup>
             <div className="p-1 text-center">
               <p className="font-bold text-sm uppercase text-blue-700">{item.kategori}</p>
+              {item.metadata?.luas_estimasi && (
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  Luas: <span className="font-bold text-green-600">{item.metadata.luas_estimasi} m²</span>
+                </p>
+              )}
               <button 
                 onClick={() => handleDelete(item.feature_id)} 
-                className="text-red-500 text-[10px] font-bold hover:text-red-700"
+                className="mt-2 text-red-500 text-[10px] font-bold hover:text-red-700"
               >
                 HAPUS
               </button>
@@ -209,8 +319,6 @@ export function SavedDataLayer({ data, onRefreshData, getCategoryColor }) {
 
 // RBI LAYER
 export function RBILayer({ activeLayers, rbiData, getCategoryColor }) {
-  const map = useMap();
-  
   return (
     <>
       {Object.keys(rbiData).map(layerKey => {
@@ -245,7 +353,7 @@ export function RBILayer({ activeLayers, rbiData, getCategoryColor }) {
   );
 }
 
-// ANALYSIS LAYER - RENDER DATA ANALISIS KE MAP
+// ANALYSIS LAYER
 export function AnalysisLayer({ activeAnalysisData }) {
   if (!activeAnalysisData?.matched_features?.features) return null;
 
@@ -326,7 +434,6 @@ export default function MapStuff(props) {
   
   return (
     <>
-      {/* Boundary Layer */}
       <BoundaryLayer 
         activeLayers={props.activeLayers}
         boundaryData={boundaryData}
@@ -334,31 +441,26 @@ export default function MapStuff(props) {
         onEachBoundary={onEachBoundary}
       />
       
-      {/* Analysis Layer - RENDER ANALISIS KE MAP */}
       <AnalysisLayer activeAnalysisData={props.activeAnalysisData} />
       
-      {/* RBI Layer */}
       <RBILayer 
         activeLayers={props.activeLayers}
         rbiData={props.rbiData}
         getCategoryColor={props.getCategoryColor}
       />
       
-      {/* Preview Layer */}
       <PreviewLayer 
         previewData={props.previewData}
         setPreviewData={props.setPreviewData}
         getCategoryColor={props.getCategoryColor}
       />
       
-      {/* Saved Data Layer */}
       <SavedDataLayer 
         data={props.data}
         onRefreshData={props.onRefreshData}
         getCategoryColor={props.getCategoryColor}
       />
       
-      {/* Controls */}
       <ZoomButtons />
       <MapReset trigger={props.goHome} onDone={() => props.setGoHome(false)} />
       <SidebarButtons 

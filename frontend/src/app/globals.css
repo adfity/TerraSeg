@@ -15,7 +15,7 @@ body {
 }
 
 /* Tambahkan di globals.css atau di dalam tag <style> */
-.detection-frame {
+/* .detection-frame {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -25,7 +25,7 @@ body {
   transform: translate(-50%, -50%);
   pointer-events: none !important;
   z-index: 1000;
-}
+} */
 
 .smart-mode .leaflet-container {
   cursor: crosshair !important;

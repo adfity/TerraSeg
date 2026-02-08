@@ -18,7 +18,7 @@ const KATEGORI = {
 const PUSAT_DEFAULT = [-2.5, 118];
 const ZOOM_DEFAULT = 5;
 
-export default function HalamanAnalisisPendidikan() {
+export default function PendidikanPage() {
   const [fileCsv, setFileCsv] = useState(null);
   const [sedangMenganalisis, setSedangMenganalisis] = useState(false);
   const [hasilAnalisis, setHasilAnalisis] = useState(null);

@@ -5,7 +5,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 import json
-# from django.contrib.gis.geos import GEOSGeometry
 from pymongo import MongoClient
 import uuid
 from dotenv import load_dotenv
@@ -36,9 +35,6 @@ def calculate_polygon_area(coords):
         return 0
     
     area = 0
-    # Faktor konversi derajat ke meter (pendekatan di khatulistiwa)
-    # 1 derajat lat ~ 111,320 meter
-    # 1 derajat lng ~ 111,320 * cos(lat) meter
     for i in range(len(coords) - 1):
         lon1, lat1 = coords[i]
         lon2, lat2 = coords[i+1]
@@ -53,6 +49,33 @@ def calculate_polygon_area(coords):
         
     return abs(area) / 2
 
+def calculate_pixel_polygon_area(segmentation_pixels, lat, lng, capture_size):
+    """
+    Hitung luas dari koordinat pixel segmentasi
+    Returns: Luas dalam m²
+    """
+    if len(segmentation_pixels) < 3:
+        return 0
+    
+    # Estimasi meter per pixel berdasarkan latitude dan zoom
+    # Asumsi zoom 18-20 (typical untuk deteksi)
+    avg_zoom = 19
+    meters_per_pixel = (40075016.686 * abs(math.cos(lat * math.pi / 180))) / (256 * pow(2, avg_zoom))
+    
+    # Hitung luas dalam pixel menggunakan Shoelace formula
+    area_pixels = 0
+    for i in range(len(segmentation_pixels) - 1):
+        x1, y1 = segmentation_pixels[i]
+        x2, y2 = segmentation_pixels[i+1]
+        area_pixels += (x1 * y2) - (x2 * y1)
+    
+    area_pixels = abs(area_pixels) / 2
+    
+    # Konversi ke m²
+    area_m2 = area_pixels * (meters_per_pixel ** 2)
+    
+    return round(area_m2, 2)
+
 @api_view(['GET'])
 def feature_list(request):
     try:
@@ -64,8 +87,9 @@ def feature_list(request):
 @api_view(['POST'])
 def run_detection(request):
     image_file = request.FILES.get('image')
-    lat = request.data.get('lat')
-    lng = request.data.get('lng')
+    lat = float(request.data.get('lat'))
+    lng = float(request.data.get('lng'))
+    capture_size = int(request.data.get('capture_size', 640))
     
     categories_raw = request.data.get('categories', '')
     selected_categories = [c.strip().lower() for c in categories_raw.split(',') if c]
@@ -75,8 +99,20 @@ def run_detection(request):
 
     try:
         img = Image.open(image_file)
-        results = model.predict(source=img, save=False)
+        
+        # Resize gambar untuk deteksi optimal
+        target_size = 640
+        if img.size != (target_size, target_size):
+            img_resized = img.resize((target_size, target_size), Image.LANCZOS)
+        else:
+            img_resized = img
+        
+        results = model.predict(source=img_resized, save=False)
         detected_data = []
+
+        # Scale factor
+        scale_x = capture_size / target_size
+        scale_y = capture_size / target_size
 
         for result in results:
             if result.masks is not None:
@@ -86,17 +122,24 @@ def run_detection(request):
                     confidence = float(result.boxes.conf[i])
 
                     if raw_label in selected_categories:
-                        segment_list = mask.tolist()
+                        # Scale koordinat mask
+                        segment_list = [[pt[0] * scale_x, pt[1] * scale_y] for pt in mask.tolist()]
+                        
+                        # Hitung luas dari segmentasi
+                        luas_m2 = calculate_pixel_polygon_area(segment_list, lat, lng, capture_size)
 
                         detected_data.append({
                             "nama": f"{raw_label.capitalize()} Terdeteksi",
                             "kategori": raw_label,
                             "segmentation": segment_list,
                             "confidence_score": round(confidence, 2),
+                            "luas_m2": luas_m2,
                             "lat": lat,
-                            "lng": lng
+                            "lng": lng,
+                            "capture_size": capture_size
                         })
             else:
+                # Bounding box fallback
                 for box in result.boxes:
                     raw_label = result.names[int(box.cls[0])].lower()
                     if raw_label in selected_categories:
@@ -104,15 +147,26 @@ def run_detection(request):
                         detected_data.append({
                             "nama": f"{raw_label.capitalize()} Terdeteksi",
                             "kategori": raw_label,
-                            "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                            "bbox": [
+                                int(x1 * scale_x), 
+                                int(y1 * scale_y), 
+                                int(x2 * scale_x), 
+                                int(y2 * scale_y)
+                            ],
                             "confidence_score": round(float(box.conf[0]), 2),
                             "lat": lat,
-                            "lng": lng
+                            "lng": lng,
+                            "capture_size": capture_size
                         })
 
         return Response({
             "status": "success",
-            "results": detected_data
+            "results": detected_data,
+            "metadata": {
+                "capture_size": capture_size,
+                "detection_size": target_size,
+                "scale_factor": scale_x
+            }
         })
 
     except Exception as e:
@@ -123,7 +177,6 @@ def run_detection(request):
 def save_detection(request):
     try:
         features = request.data.get('features', [])
-        feature_uuid = str(uuid.uuid4()) 
 
         for item in features:
             raw_coords = item.get('polygon_coords') 
@@ -140,10 +193,8 @@ def save_detection(request):
             except Exception:
                 return Response({"error": "Format koordinat salah"}, status=400)
 
-            # --- PINDAHKAN KE SINI ---
-            # Hitung luas setelah coords_list dipastikan ada
+            # Hitung luas dari koordinat geografis
             luas_m2 = calculate_polygon_area(coords_list)
-            # -------------------------
 
             feature_uuid = str(uuid.uuid4())
 
@@ -158,6 +209,7 @@ def save_detection(request):
                     "coordinates": [coords_list] 
                 },
                 "metadata": {
+                    **item.get('metadata', {}),
                     "luas_estimasi": round(luas_m2, 2),
                     "satuan": "m2"
                 },
@@ -165,7 +217,7 @@ def save_detection(request):
             }
             mongo_collection.insert_one(mongo_document)
 
-        return Response({"status": "success", "feature_id": feature_uuid}, status=201)
+        return Response({"status": "success", "message": f"{len(features)} objek berhasil disimpan"}, status=201)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
@@ -238,7 +290,6 @@ def rbi_kesehatan_list(request):
 # BOUNDARY DATA
 @api_view(['GET'])
 def batas_provinsi(request):
-    """Ambil seluruh batas wilayah Indonesia (Layer Dasar)"""
     try:
         cursor = mongo_db["batas_provinsi"].find({}, {'_id': 0})
         features = list(cursor)
@@ -251,7 +302,6 @@ def batas_provinsi(request):
     
 @api_view(['GET'])
 def batas_kabupaten(request):
-    """Ambil seluruh batas wilayah Indonesia (Layer Dasar)"""
     try:
         cursor = mongo_db["batas_kabupaten"].find({}, {'_id': 0})
         features = list(cursor)
@@ -261,5 +311,3 @@ def batas_kabupaten(request):
         })
     except Exception as e:
         return Response({"error": str(e)}, status=500)
-
-

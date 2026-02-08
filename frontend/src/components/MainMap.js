@@ -5,19 +5,18 @@ import { MapContainer, TileLayer, ScaleControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
 
-// Import dari file yang sama
 import MapStuff from './MapStuff';
 import GeoAI from './panel/geoai';
 import BasemapPanel, { BASEMAP_OPTIONS } from './panel/basemap';
 import LayersPanel from './panel/layers';
 import RadiusPanel from './panel/radius';
-import AnalysisPanel from './panel/analysis'; // IMPORT PANEL ANALYSIS
+import AnalysisPanel from './panel/analysis';
 
 export default function MainMap({ activePanel, setActivePanel }) {
   // STATE UTAMA
   const [currentBasemap, setCurrentBasemap] = useState(BASEMAP_OPTIONS[0].url);
   const [activeLayers, setActiveLayers] = useState([]);
-  const [data, setData] = useState(null); // Data dari MongoDB
+  const [data, setData] = useState(null);
   const [previewData, setPreviewData] = useState([]);
   const [goHome, setGoHome] = useState(false);
   const [activeRadius, setActiveRadius] = useState(null);
@@ -26,8 +25,18 @@ export default function MainMap({ activePanel, setActivePanel }) {
   const [activeAnalysisId, setActiveAnalysisId] = useState(null);
   const [activeAnalysisData, setActiveAnalysisData] = useState(null);
   
-  // DATA RBI untuk pendidikan & kesehatan
+  // DATA RBI
   const [rbiData, setRbiData] = useState({});
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch data awal dari MongoDB
   useEffect(() => {
@@ -46,7 +55,7 @@ export default function MainMap({ activePanel, setActivePanel }) {
     fetchData();
   }, []);
 
-  // Fetch data analysis detail ketika activeAnalysisId berubah
+  // Fetch data analysis detail
   useEffect(() => {
     if (!activeAnalysisId) {
       setActiveAnalysisData(null);
@@ -68,7 +77,7 @@ export default function MainMap({ activePanel, setActivePanel }) {
     fetchAnalysisDetail();
   }, [activeAnalysisId]);
   
-  // Fetch data RBI saat layer aktif
+  // Fetch data RBI
   useEffect(() => {
     activeLayers.forEach(layerId => {
       if (layerId.startsWith('batas_')) return;
@@ -94,7 +103,7 @@ export default function MainMap({ activePanel, setActivePanel }) {
     });
   }, [activeLayers]);
   
-  // Fungsi helper untuk warna
+  // Helper functions
   const getCategoryColor = (cat) => {
     switch (cat?.toLowerCase()) {
       case 'bangunan': return '#f59e0b';
@@ -107,7 +116,6 @@ export default function MainMap({ activePanel, setActivePanel }) {
     }
   };
   
-  // Handler untuk layer
   const toggleLayer = (layerId) => {
     setActiveLayers(prev => 
       prev.includes(layerId) 
@@ -130,11 +138,21 @@ export default function MainMap({ activePanel, setActivePanel }) {
     }
   };
 
+  // Panel positioning - desktop vs mobile
+  const getPanelClasses = () => {
+    if (isMobile) {
+      return "fixed top-16 bottom-20 left-0 right-0 w-full rounded-none";
+    } else {
+      return "fixed top-20 bottom-20 right-20 w-80 rounded-2xl";
+    }
+  };
+
   return (
     <div className="h-screen w-full relative overflow-hidden bg-slate-900">
-      {/* PANEL KANAN */}
+      
+      {/* PANEL BASEMAP - DI LUAR MAP (tidak butuh useMap) */}
       {activePanel === 'basemap' && (
-        <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900">
+        <aside className={`${getPanelClasses()} shadow-2xl z-[1050] bg-white dark:bg-slate-900 overflow-hidden`}>
           <BasemapPanel 
             activeUrl={currentBasemap}
             onSelect={(url) => setCurrentBasemap(url)}
@@ -142,8 +160,9 @@ export default function MainMap({ activePanel, setActivePanel }) {
         </aside>
       )}
       
+      {/* PANEL LAYERS - DI LUAR MAP (tidak butuh useMap) */}
       {activePanel === 'layers' && (
-        <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900">
+        <aside className={`${getPanelClasses()} shadow-2xl z-[1050] bg-white dark:bg-slate-900 overflow-hidden`}>
           <LayersPanel 
             activeLayers={activeLayers} 
             onToggleLayer={toggleLayer}
@@ -153,8 +172,9 @@ export default function MainMap({ activePanel, setActivePanel }) {
         </aside>
       )}
 
+      {/* PANEL ANALYSIS - DI LUAR MAP (tidak butuh useMap) */}
       {activePanel === 'analysis' && (
-        <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900">
+        <aside className={`${getPanelClasses()} shadow-2xl z-[1050] bg-white dark:bg-slate-900 overflow-hidden`}>
           <AnalysisPanel 
             onClose={() => setActivePanel(null)}
             activeAnalysisId={activeAnalysisId}
@@ -179,9 +199,8 @@ export default function MainMap({ activePanel, setActivePanel }) {
           maxZoom={22}
         />
         
-        {/* SEMUA KOMPONEN MAP ADA DI SINI */}
+        {/* MAP COMPONENTS */}
         <MapStuff
-          // State
           activePanel={activePanel}
           activeLayers={activeLayers}
           data={data}
@@ -190,23 +209,22 @@ export default function MainMap({ activePanel, setActivePanel }) {
           rbiData={rbiData}
           activeAnalysisData={activeAnalysisData}
           
-          // Handlers
           setGoHome={setGoHome}
           setPreviewData={setPreviewData}
           setActivePanel={setActivePanel}
           getCategoryColor={getCategoryColor}
           
-          // Untuk fetch ulang data
           onRefreshData={() => {
             fetch('http://127.0.0.1:8000/api/features/')
               .then(res => res.json())
               .then(json => setData(json));
           }}
         />
-        
+
+        {/* PANEL RADIUS - DI DALAM MAP (butuh useMap) */}
         {activePanel === 'radius' && (
-          <div className="leaflet-top leaflet-right !static pointer-events-none">
-            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900 pointer-events-auto">
+          <div className="leaflet-top leaflet-right" style={{ pointerEvents: 'none' }}>
+            <aside className={`${getPanelClasses()} shadow-2xl z-[1050] bg-white dark:bg-slate-900 overflow-hidden`} style={{ pointerEvents: 'auto' }}>
               <RadiusPanel 
                 activeRadius={activeRadius}
                 setActiveRadius={setActiveRadius}
@@ -221,10 +239,10 @@ export default function MainMap({ activePanel, setActivePanel }) {
           </div>
         )}
         
-        {/* PANEL GEOAI */}
+        {/* PANEL GEOAI - DI DALAM MAP (butuh useMap) */}
         {activePanel === 'geoai' && (
-          <div className="leaflet-top leaflet-right !static">
-            <aside className="fixed top-20 bottom-20 right-20 w-80 rounded-2xl shadow-2xl z-[1050] bg-white dark:bg-slate-900 pointer-events-auto">
+          <div className="leaflet-top leaflet-right" style={{ pointerEvents: 'none' }}>
+            <aside className={`${getPanelClasses()} shadow-2xl z-[1050] bg-white dark:bg-slate-900 overflow-hidden`} style={{ pointerEvents: 'auto' }}>
               <GeoAI 
                 onNewData={() => {
                   fetch('http://127.0.0.1:8000/api/features/')
@@ -237,7 +255,6 @@ export default function MainMap({ activePanel, setActivePanel }) {
                 setPreviewData={setPreviewData}
               />
             </aside>
-            <div className="detection-frame"></div>
           </div>
         )}
 

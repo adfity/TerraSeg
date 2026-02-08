@@ -17,7 +17,7 @@ const CATEGORIES = [
     label: 'Batas Wilayah',
     icon: <Map size={18} />,
     color: 'blue',
-    type: 'boundary', // Tipe khusus untuk batas wilayah
+    type: 'boundary',
     layers: [
       {
         id: 'batas_provinsi',
@@ -39,7 +39,7 @@ const CATEGORIES = [
   },
   {
     id: 'pendidikan',
-    label: 'Sarana Pendidikan',
+    label: 'Pendidikan',
     icon: <School size={18} />,
     color: 'blue',
     endpoint: '/api/rbi-pendidikan/',
@@ -51,7 +51,7 @@ const CATEGORIES = [
   },
   {
     id: 'kesehatan',
-    label: 'Sarana Kesehatan',
+    label: 'Kesehatan',
     icon: <Stethoscope size={18} />,
     color: 'blue',
     endpoint: '/api/rbi-kesehatan/',
@@ -63,13 +63,11 @@ const CATEGORIES = [
   }
 ];
 
-// Komponen untuk render batas wilayah
 export function BoundaryLayer({ activeLayers, boundaryData, getBoundaryStyle, onEachBoundary }) {
   if (!boundaryData) return null;
 
   return (
     <>
-      {/* Layer Batas Provinsi */}
       {activeLayers.includes('batas_provinsi') && boundaryData.provinsi && (
         <GeoJSON 
           key="batas-provinsi"
@@ -79,7 +77,6 @@ export function BoundaryLayer({ activeLayers, boundaryData, getBoundaryStyle, on
         />
       )}
 
-      {/* Layer Batas Kabupaten */}
       {activeLayers.includes('batas_kabupaten') && boundaryData.kabupaten && (
         <GeoJSON 
           key="batas-kabupaten"
@@ -92,7 +89,6 @@ export function BoundaryLayer({ activeLayers, boundaryData, getBoundaryStyle, on
   );
 }
 
-// Hook untuk mengelola data batas wilayah
 export function useBoundaryData(activeLayers) {
   const [boundaryData, setBoundaryData] = useState({
     provinsi: null,
@@ -103,12 +99,6 @@ export function useBoundaryData(activeLayers) {
     try {
       const endpoint = type === 'provinsi' ? '/api/batas-provinsi/' : '/api/batas-kabupaten/';
       const response = await axios.get(`http://127.0.0.1:8000${endpoint}`);
-      
-      // Debug: Lihat struktur data
-      console.log(`Data ${type}:`, response.data);
-      if (response.data.features && response.data.features.length > 0) {
-        console.log(`Contoh properti ${type}:`, response.data.features[0].properties);
-      }
       
       setBoundaryData(prev => ({
         ...prev,
@@ -128,7 +118,6 @@ export function useBoundaryData(activeLayers) {
     }
   }, [activeLayers, boundaryData]);
 
-  // Fungsi styling
   const getBoundaryStyle = (type) => {
     if (type === 'provinsi') {
       return {
@@ -151,7 +140,6 @@ export function useBoundaryData(activeLayers) {
     }
   };
 
-  // Event handler - TANPA efek hover warna
   const onEachBoundary = (feature, layer, type) => {
     const properties = feature.properties || {};
     const name = properties.name || properties.NAMOBJ || 'Tanpa Nama';
@@ -163,18 +151,15 @@ export function useBoundaryData(activeLayers) {
         <b>${level === 'province' ? 'Provinsi' : 'Kabupaten/Kota'}</b><br/>
         <strong>${name}</strong><br/>
         ${code ? `<small>Kode: ${code}</small><br/>` : ''}
-        ${properties.latitude ? `<small>Lat: ${properties.latitude.toFixed(4)}</small><br/>` : ''}
-        ${properties.longitude ? `<small>Lon: ${properties.longitude.toFixed(4)}</small>` : ''}
       </div>
     `);
     
-    // Efek hover SEDERHANA tanpa perubahan warna
     layer.on({
       mouseover: (e) => {
         const l = e.target;
         l.setStyle({
-          weight: type === 'provinsi' ? 3 : 2, // Sedikit lebih tebal saat hover
-          dashArray: "0", // Garis solid saat hover
+          weight: type === 'provinsi' ? 3 : 2,
+          dashArray: "0",
           opacity: 1
         });
       },
@@ -193,15 +178,13 @@ export function useBoundaryData(activeLayers) {
   };
 }
 
-// Main Panel Component
-export default function LayersPanel({ activeLayers, onToggleLayer, rbiData, onToggleProvinsi, fetchRbiData }) {
-  const [activeTab, setActiveTab] = useState('pendidikan');
+export default function LayersPanel({ activeLayers, onToggleLayer, rbiData, onToggleProvinsi }) {
+  const [activeTab, setActiveTab] = useState('batas_wilayah');
   const [expandedProv, setExpandedProv] = useState(["JAWA BARAT"]);
 
   const currentCat = CATEGORIES.find(c => c.id === activeTab);
   const isBoundaryTab = currentCat?.type === 'boundary';
 
-  // Hitung statistik berdasarkan kategori aktif
   const stats = useMemo(() => {
     if (isBoundaryTab) return {};
     
@@ -216,19 +199,25 @@ export default function LayersPanel({ activeLayers, onToggleLayer, rbiData, onTo
   }, [rbiData, activeTab, currentCat, isBoundaryTab]);
 
   return (
-    <div className="flex flex-col h-full bg-white select-none">
+    <div 
+      className="flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800"
+      onWheel={(e) => e.stopPropagation()}
+    >
       {/* HEADER */}
-      <div className="p-4 bg-slate-900 text-white">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Layer Kontrol</p>
+      <div className="p-6 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50">
+        <h3 className="font-black text-lg uppercase tracking-tight text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+          <LayersIcon size={20}/>
+          Layer Kontrol
+        </h3>
         <div className="flex gap-2">
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveTab(cat.id)}
-              className={`p-3 rounded-xl transition-all ${
+              className={`p-2.5 rounded-xl transition-all ${
                 activeTab === cat.id 
-                ? `bg-${cat.color}-600 text-white shadow-lg shadow-${cat.color}-900/20 scale-105` 
-                : 'bg-white/10 text-slate-400 hover:bg-white/20'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg scale-105' 
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
               }`}
               title={cat.label}
             >
@@ -239,111 +228,68 @@ export default function LayersPanel({ activeLayers, onToggleLayer, rbiData, onTo
       </div>
 
       {/* BODY */}
-      <div className="flex-1 overflow-y-auto bg-slate-50/50 p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {isBoundaryTab ? (
-          /* CONTENT UNTUK BATAS WILAYAH */
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">
-                Batas Administratif
-              </h4>
-              <span className="text-[10px] text-slate-400 font-medium">Data Vektor</span>
-            </div>
-
-            <div className="space-y-3">
-              {currentCat.layers.map(layer => {
-                const isActive = activeLayers.includes(layer.id);
-                
-                return (
-                  <button
-                    key={layer.id}
-                    onClick={() => onToggleLayer(layer.id)}
-                    className={`group w-full p-4 rounded-2xl border-2 transition-all flex items-start gap-3 text-left ${
-                      isActive
-                        ? `border-${layer.color}-500 bg-${layer.color}-50/50`
-                        : 'border-transparent bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${
-                      isActive ? `bg-${layer.color}-100 text-${layer.color}-600` : 'bg-slate-100 text-slate-400'
+          /* BATAS WILAYAH */
+          <div className="space-y-3">
+            {currentCat.layers.map(layer => {
+              const isActive = activeLayers.includes(layer.id);
+              
+              return (
+                <button
+                  key={layer.id}
+                  onClick={() => onToggleLayer(layer.id)}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all flex items-start gap-3 text-left ${
+                    isActive
+                      ? 'border-cyan-500 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 shadow-lg'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <div className={`p-2 rounded-lg ${
+                    isActive ? 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                  }`}>
+                    {layer.icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-sm font-bold ${
+                      isActive ? 'text-cyan-700 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'
                     }`}>
-                      {layer.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className={`text-sm font-bold ${
-                          isActive ? `text-${layer.color}-700` : 'text-slate-700'
-                        }`}>
-                          {layer.label}
-                        </p>
-                        <div className={`h-2 w-2 rounded-full ${
-                          isActive ? `bg-${layer.color}-500` : 'bg-slate-300'
-                        }`} />
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {layer.description}
-                      </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                          isActive 
-                            ? `bg-${layer.color}-100 text-${layer.color}-700`
-                            : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {layer.id.includes('provinsi') ? 'Line Feature' : 'Polygon Feature'}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          • Sumber: BPS
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {/* Informasi tambahan */}
-              <div className="mt-4 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
-                <p className="text-xs text-blue-800 font-medium mb-1">Tips:</p>
-                <p className="text-[10px] text-blue-600">
-                  • Aktifkan kedua layer untuk melihat hierarki batas
-                  <br/>
-                  • Zoom in untuk melihat detail batas kabupaten
-                  <br/>
-                  • Klik pada garis untuk melihat informasi wilayah
-                </p>
-              </div>
-            </div>
+                      {layer.label}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {layer.description}
+                    </p>
+                  </div>
+                  {isActive && (
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 shadow-lg animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         ) : (
-          /* CONTENT UNTUK RBI (PENDIDIKAN & KESEHATAN) */
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">
-                {currentCat?.label}
-              </h4>
-              <span className="text-[10px] text-slate-400 font-medium">Data Terpusat</span>
-            </div>
-
+          /* RBI (PENDIDIKAN & KESEHATAN) */
+          <div className="space-y-3">
             {currentCat?.provinsi?.map((prov) => {
               const prefixedCities = prov.cities.map(city => `${activeTab}_${city}`);
               const isAllSelected = prefixedCities.every(city => activeLayers.includes(city));
               const totalProv = prov.cities.reduce((acc, city) => acc + (stats[city] || 0), 0);
 
               return (
-                <div key={prov.nama} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  {/* Header Provinsi */}
-                  <div className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <div key={prov.nama} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <div 
                       className="flex items-center gap-3 cursor-pointer flex-1"
                       onClick={() => setExpandedProv(prev => 
                         prev.includes(prov.nama) ? prev.filter(p => p !== prov.nama) : [...prev, prov.nama]
                       )}
                     >
-                      <div className={`p-1.5 rounded-lg bg-${currentCat.color}-50 text-${currentCat.color}-600`}>
+                      <div className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
                         {expandedProv.includes(prov.nama) ? <ChevronDown size={14} strokeWidth={3}/> : <ChevronRight size={14} strokeWidth={3}/>}
                       </div>
                       <div>
-                        <p className="text-[11px] font-black text-slate-700 leading-none">{prov.nama}</p>
-                        <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase">{totalProv} Objek ditemukan</p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{prov.nama}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{totalProv} objek</p>
                       </div>
                     </div>
 
@@ -351,37 +297,36 @@ export default function LayersPanel({ activeLayers, onToggleLayer, rbiData, onTo
                       onClick={() => onToggleProvinsi(prefixedCities, isAllSelected)}
                       className={`p-2 rounded-lg transition-all ${
                         isAllSelected 
-                        ? `bg-${currentCat.color}-600 text-white` 
-                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' 
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
                       }`}
                     >
                       <CheckCircle2 size={16} />
                     </button>
                   </div>
 
-                  {/* Child Cities */}
                   {expandedProv.includes(prov.nama) && (
-                    <div className="px-3 pb-3 pt-1 grid grid-cols-1 gap-1.5">
+                    <div className="px-3 pb-3 pt-1 grid grid-cols-1 gap-2">
                       {prov.cities.map(city => {
                         const layerId = `${activeTab}_${city}`;
                         return (
                           <button
                             key={layerId}
                             onClick={() => onToggleLayer(layerId)}
-                            className={`group flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                            className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
                               activeLayers.includes(layerId)
-                                ? `border-${currentCat.color}-500 bg-${currentCat.color}-50/30 text-${currentCat.color}-700`
-                                : 'border-transparent bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                ? 'border-cyan-500 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 text-cyan-700 dark:text-cyan-400'
+                                : 'border-transparent bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              <MapPin size={12} className={activeLayers.includes(layerId) ? `text-${currentCat.color}-500` : 'text-slate-300'} />
-                              <span className="text-[11px] font-bold text-left leading-tight">{city}</span>
+                              <MapPin size={12} className={activeLayers.includes(layerId) ? 'text-cyan-500' : 'text-slate-300'} />
+                              <span className="text-xs font-bold">{city}</span>
                             </div>
                             <div className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                               activeLayers.includes(layerId) 
-                              ? `bg-${currentCat.color}-600 text-white` 
-                              : 'bg-white border border-slate-200 text-slate-400'
+                              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' 
+                              : 'bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-400'
                             }`}>
                               {stats[city] || 0}
                             </div>

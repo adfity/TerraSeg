@@ -26,15 +26,10 @@ export default function HeaderBar() {
     }, [pathname]);
 
     useEffect(() => {
-        if (isMapPage) {
-            document.documentElement.setAttribute("data-theme", "dark");
-            setTheme("dark");
-            return;
-        }
         const saved = localStorage.getItem("theme") || "light";
         document.documentElement.setAttribute("data-theme", saved);
         setTheme(saved);
-    }, [pathname, isMapPage]);
+    }, [pathname]);
 
     useEffect(() => {
         if (!isLandingPage) return;
@@ -57,11 +52,11 @@ export default function HeaderBar() {
     }, [isLandingPage]);
 
     const toggleTheme = () => {
-        if (isMapPage) return;
         const next = theme === "dark" ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", next);
         localStorage.setItem("theme", next);
         setTheme(next);
+        // Toast alert dihapus seperti yang diminta
     };
 
     const handleSignOut = () => {
@@ -79,7 +74,7 @@ export default function HeaderBar() {
             
             <Link href="/" className="flex items-center hover:opacity-90 transition pl-2 md:pl-5">
                 <Image src="/icons/terrablack.png" alt="TerraSeg" width={90} height={36} className="block dark:hidden" />
-                <Image src="/icons/terrawhite2.png" alt="TerraSeg" width={90} height={36} className="hidden dark:block" />
+                <Image src="/icons/wterra.png" alt="TerraSeg" width={90} height={36} className="hidden dark:block" />
             </Link>
 
             {isMapPage && (
@@ -97,36 +92,70 @@ export default function HeaderBar() {
 
             {isLandingPage && (
                 <nav className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <a href="#home" onClick={() => setActiveHash("#home")} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeHash === "#home" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Home</a>
-                        <a href="#features" onClick={() => setActiveHash("#features")} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeHash === "#features" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Fitur</a>
-                        <a href="#how-it-works" onClick={() => setActiveHash("#how-it-works")} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeHash === "#how-it-works" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Cara Kerja</a>
-                        <a href="#cta" onClick={() => setActiveHash("#cta")} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeHash === "#cta" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Daftar Sekarang</a>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100/80 dark:from-slate-800 dark:to-slate-800/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
+                        {[
+                            { href: "#home", label: "Home" },
+                            { href: "#features", label: "Fitur" },
+                            { href: "#how-it-works", label: "Cara Kerja" },
+                            { href: "#cta", label: "Daftar" }
+                        ].map(item => (
+                            <a 
+                                key={item.href}
+                                href={item.href} 
+                                onClick={() => setActiveHash(item.href)} 
+                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                    activeHash === item.href 
+                                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/40 scale-105" 
+                                    : "text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:shadow-md"
+                                }`}
+                            >
+                                {item.label}
+                            </a>
+                        ))}
                     </div>
                 </nav>
             )}
 
             {isAnalysisPage && (
                 <nav className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <Link href="/analysis/ekonomi" className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${pathname === "/analysis/ekonomi" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Ekonomi</Link>
-                        <Link href="/analysis/pendidikan" className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${pathname === "/analysis/pendidikan" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Pendidikan</Link>
-                        <Link href="/analysis/kesehatan" className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${pathname === "/analysis/kesehatan" ? "bg-[#1378b7] text-white shadow-md shadow-[#1378b7]/40 scale-[1.05]" : "text-slate-600 dark:text-slate-300 hover:bg-white hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"}`}>Kesehatan</Link>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100/80 dark:from-slate-800 dark:to-slate-800/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
+                        {[
+                            { href: "/analysis/ekonomi", label: "Ekonomi" },
+                            { href: "/analysis/pendidikan", label: "Pendidikan" },
+                            { href: "/analysis/kesehatan", label: "Kesehatan" }
+                        ].map(item => (
+                            <Link 
+                                key={item.href}
+                                href={item.href} 
+                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                    pathname === item.href 
+                                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/40 scale-105" 
+                                    : "text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:shadow-md"
+                                }`}
+                            >
+                                {item.label}
+                            </Link>
+                        ))}
                     </div>
                 </nav>
             )}
 
             <div className="ml-auto flex items-center gap-2 md:gap-3 pr-2 md:pr-5">
-                {!isMapPage && (
-                    <button onClick={toggleTheme} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-                        {theme === "dark" ? <Sun size={22} className="text-yellow-400" /> : <Moon size={22} className="text-slate-700" />}
-                    </button>
-                )}
+                <button 
+                    onClick={toggleTheme} 
+                    className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                    {theme === "dark" ? (
+                        <Sun size={22} className="text-yellow-400" />
+                    ) : (
+                        <Moon size={22} className="text-slate-700" />
+                    )}
+                </button>
 
                 {isLoggedIn ? (
                     <div className="flex items-center gap-1 md:gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                         <div className="hidden sm:flex items-center gap-2 px-2 md:px-3 py-1">
-                            <div className="w-7 h-7 bg-[#1378b7] rounded-full flex items-center justify-center text-white">
+                            <div className="w-7 h-7 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-white">
                                 <UserIcon size={16} />
                             </div>
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200 max-w-[100px] truncate">
@@ -138,7 +167,7 @@ export default function HeaderBar() {
                         </button>
                     </div>
                 ) : (
-                    <button onClick={() => router.push("/login")} className="h-9 md:h-10 px-3 md:px-5 rounded-xl bg-[#1378b7] hover:bg-[#11669c] shadow-md font-semibold text-white transition active:scale-95">
+                    <button onClick={() => router.push("/login")} className="h-9 md:h-10 px-3 md:px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-md font-semibold text-white transition active:scale-95">
                         <span className="hidden sm:inline">Sign in / up</span>
                         <span className="sm:hidden">Login</span>
                     </button>

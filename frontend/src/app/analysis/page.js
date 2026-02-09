@@ -8,6 +8,8 @@ import {
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
+import { usePathname } from "next/navigation";
+
 
 // Konfigurasi Kategori Sesuai Data Backend
 const KATEGORI = {
@@ -20,6 +22,8 @@ const PUSAT_DEFAULT = [-2.5, 118];
 const ZOOM_DEFAULT = 5;
 
 export default function HalamanAnalisisPendidikan() {
+  const pathname = usePathname();
+
   const [fileCsv, setFileCsv] = useState(null);
   const [sedangMenganalisis, setSedangMenganalisis] = useState(false);
   const [hasilAnalisis, setHasilAnalisis] = useState(null);
@@ -141,44 +145,45 @@ export default function HalamanAnalisisPendidikan() {
         </div>
 
         {/* NAVIGASI TENGAH (Desktop) */}
-        <div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-          <Link href="/ekonomi" className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] hover:text-blue-600 transition-all">
-            <Wallet size={15} /> Ekonomi
-          </Link>
-          <Link href="/pendidikan" className="flex items-center gap-2 text-[11px] font-black text-blue-600 border-b-2 border-blue-600 pb-1 uppercase tracking-[0.15em]">
-            <School size={15} /> Pendidikan
-          </Link>
-          <Link href="/kesehatan" className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] hover:text-blue-600 transition-all">
-            <HeartPulse size={15} /> Kesehatan
-          </Link>
-        </div>
+<div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
 
-        {/* UNGGAH & MENU MOBILE (Kanan) */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3">
-            <div 
-              onClick={() => refInputFile.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 hover:shadow-md transition-all group"
-            >
-              <Upload size={14} className="text-slate-400 group-hover:text-blue-500" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate max-w-[100px]">
-                {fileCsv ? fileCsv.name : "UNGGAH"}
-              </span>
-              <input type="file" ref={refInputFile} hidden onChange={tanganiUnggahFile} accept=".csv" />
-            </div>
-            <button 
-              onClick={jalankanAnalisis}
-              disabled={sedangMenganalisis || !fileCsv}
-              className="px-6 py-2.5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] tracking-[0.2em] hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-200 disabled:opacity-50 transition-all uppercase active:scale-95"
-            >
-              ANALISIS
-            </button>
-          </div>
-          
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-slate-800 bg-slate-50 rounded-xl">
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
+  <Link
+    href="/analisis_ekonomi"
+    className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all
+      ${pathname === "/analisis_ekonomi"
+        ? "text-blue-600 border-b-2 border-blue-600 pb-1"
+        : "text-gray-400 hover:text-blue-600"
+      }`}
+  >
+    <Wallet size={15} /> Ekonomi
+  </Link>
+
+  <Link
+    href="/analysis"
+    className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all
+      ${pathname === "/analysis"
+        ? "text-blue-600 border-b-2 border-blue-600 pb-1"
+        : "text-gray-400 hover:text-blue-600"
+      }`}
+  >
+    <School size={15} /> Pendidikan
+  </Link>
+
+  <Link
+    href="/analisis_kesehatan"
+    className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all
+      ${pathname === "/analisis_kesehatan"
+        ? "text-blue-600 border-b-2 border-blue-600 pb-1"
+        : "text-gray-400 hover:text-blue-600"
+      }`}
+  >
+    <HeartPulse size={15} /> Kesehatan
+  </Link>
+
+</div>
+
+
+        
       </nav>
 
       {/* MENU MOBILE OVERLAY */}
@@ -210,6 +215,46 @@ export default function HalamanAnalisisPendidikan() {
       <div className="max-w-[1440px] mx-auto p-4 md:p-8">
         {/* AREA PETA */}
         <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-4 md:border-[12px] border-white h-[550px] md:h-[750px] relative overflow-hidden group">
+          
+          {/* OVERLAY UNGGAH DI ATAS PETA */}
+<div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000]">
+  <div className="flex items-center gap-3 bg-white/90 backdrop-blur 
+                  px-4 py-3 rounded-2xl shadow-lg border border-slate-100">
+    
+    {/* UNGGAH */}
+    <div 
+      onClick={() => refInputFile.current?.click()}
+      className="flex items-center gap-2 px-4 py-2 bg-slate-50 
+                 border border-slate-200 rounded-xl cursor-pointer 
+                 hover:bg-white hover:border-blue-400 transition-all group"
+    >
+      <Upload size={14} className="text-slate-400 group-hover:text-blue-500" />
+      <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider max-w-[120px] truncate">
+        {fileCsv ? fileCsv.name : "Unggah"}
+      </span>
+      <input
+        type="file"
+        ref={refInputFile}
+        hidden
+        onChange={tanganiUnggahFile}
+        accept=".csv"
+      />
+    </div>
+
+    {/* ANALISIS */}
+    <button
+      onClick={jalankanAnalisis}
+      disabled={sedangMenganalisis || !fileCsv}
+      className="px-6 py-2 bg-[#0f172a] text-white 
+                 rounded-xl font-black text-[10px] tracking-[0.2em] 
+                 hover:bg-blue-600 disabled:opacity-50 transition-all uppercase"
+    >
+      ANALISIS
+    </button>
+  </div>
+</div>
+
+          
           {!petaSedangMemuat && KontainerPeta && (
             <KontainerPeta 
               center={PUSAT_DEFAULT} 

@@ -8,6 +8,7 @@ import io
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 
@@ -20,24 +21,94 @@ mongo_db = client[DB_MONGO_NAME]
 
 
 # MODEL ANALISIS SEDERHANA
+
 class PendidikanAnalytics:
-    """Model analisis pendidikan sederhana dengan 3 kategori"""
+    """Model analisis pendidikan dengan Dynamic Recommendation Engine"""
     
     def __init__(self):
-        # Warna untuk 3 kategori
+        # Warna identitas kategori
         self.colors = {
-            "RENDAH": "#ef4444",    # Merah
-            "SEDANG": "#f59e0b",    # Kuning
-            "TINGGI": "#10b981"     # Hijau
+            "RENDAH": "#d73027",    # Merah
+            "SEDANG": "#fee08b",    # Kuning
+            "TINGGI": "#1a9850"     # Hijau
         }
         
-        # Bobot untuk WERI
+        # Bobot untuk perhitungan WERI
         self.weights = {
             'SD': 0.25,   # 7-12 tahun
             'SMP': 0.30,  # 13-15 tahun
             'SMA': 0.30,  # 16-18 tahun
             'PT': 0.15    # 19-23 tahun
         }
+
+        # Bank Kebijakan Luas (Digitalisasi Dokumen Perencanaan Strategis)
+        self.action_pool = {
+            "KRITIS_SD": [
+                "Akselerasi Program Indonesia Pintar (PIP) Afirmasi untuk menekan angka putus sekolah usia dini",
+                "Mobilisasi Dana Alokasi Khusus (DAK) Fisik untuk rehabilitasi total ruang kelas rusak berat",
+                "Penyediaan moda transportasi sekolah daerah terpencil guna meningkatkan aksesibilitas wilayah",
+                "Optimalisasi distribusi buku teks utama dan alat peraga edukatif berbasis standar SPM",
+                "Penguatan program gizi tambahan sekolah untuk meningkatkan fokus dan kehadiran siswa",
+                "Inisiasi kelas rintisan berbasis komunitas di wilayah dengan jarak geografis ekstrem",
+                "Audit integrasi Data Pokok Pendidikan (DAPODIK) untuk validasi bantuan siswa miskin",
+                "Peningkatan rasio guru-murid melalui redistribusi tenaga pendidik ke wilayah pinggiran"
+            ],
+            "KRITIS_SMP": [
+                "Penguatan kampanye Wajib Belajar 12 Tahun melalui kolaborasi lintas sektoral dan tokoh masyarakat",
+                "Pemberian insentif transisi pendidikan bagi lulusan SD dari keluarga penerima manfaat (KIP)",
+                "Pembangunan Unit Sekolah Baru (USB) di zonasi blankspot untuk pemerataan jangkauan layanan",
+                "Audit periodik data ATS (Anak Tidak Sekolah) untuk intervensi bantuan sosial tepat sasaran",
+                "Program pendampingan psikososial dan bimbingan karir dini bagi siswa menengah pertama",
+                "Ekspansi pusat kegiatan belajar masyarakat (PKBM) untuk layanan pendidikan non-formal berkualitas",
+                "Optimalisasi bantuan operasional sekolah (BOS) untuk penguatan kegiatan ekstrakurikuler",
+                "Implementasi kurikulum berbasis literasi digital untuk adaptasi teknologi sejak dini"
+            ],
+            "KRITIS_SMA": [
+                "Revitalisasi Pendidikan Vokasi (SMK) melalui program Link and Match dengan industri strategis",
+                "Pemberian subsidi biaya praktik dan sertifikasi kompetensi bagi siswa menengah kejuruan",
+                "Transformasi kurikulum berbasis potensi ekonomi lokal guna meningkatkan daya saing lulusan",
+                "Pembangunan asrama sekolah di wilayah dengan topografi sulit untuk meminimalkan hambatan geografis",
+                "Program beasiswa khusus untuk jurusan sains dan teknologi di tingkat menengah atas",
+                "Kemitraan dengan balai latihan kerja (BLK) untuk penguatan ketrampilan teknis siswa",
+                "Penyediaan laboratorium TIK standar industri untuk mendukung pembelajaran berbasis proyek",
+                "Skema bantuan biaya pendidikan mandiri bagi siswa di luar jangkauan bantuan pusat"
+            ],
+            "KRITIS_PT": [
+                "Ekspansi kuota Beasiswa KIP-Kuliah untuk peningkatan APK (Angka Partisipasi Kasar) Pendidikan Tinggi",
+                "Kemitraan Perguruan Tinggi dengan BUMD dalam program magang dan penyerapan tenaga kerja lokal",
+                "Inisiasi pusat inovasi dan inkubasi wirausaha digital tingkat kampus untuk mendorong ekonomi kreatif",
+                "Sosialisasi skema bantuan dana pendidikan tingkat lanjut bagi masyarakat berpenghasilan rendah",
+                "Penyelarasan program studi universitas dengan proyeksi kebutuhan industri 5 tahun kedepan",
+                "Penyediaan hibah riset terapan bagi mahasiswa untuk penyelesaian masalah pembangunan daerah",
+                "Penguatan jaring pengaman alumni (Alumni Network) untuk akses lapangan kerja perdana",
+                "Pemberian bantuan biaya hidup bagi mahasiswa berprestasi dari wilayah tertinggal"
+            ],
+            "UMUM_RENDAH": [
+                "Pemenuhan kuota tenaga pendidik melalui skema PPPK dengan prioritas penempatan wilayah 3T",
+                "Digitalisasi pendidikan melalui pengadaan bantuan perangkat TIK dan akses internet sekolah",
+                "Peningkatan alokasi belanja fungsi pendidikan daerah untuk pemenuhan Standar Pelayanan Minimal",
+                "Penyediaan tunjangan kemahalan bagi guru yang bertugas di lokasi geografis sulit",
+                "Program percepatan sertifikasi guru guna meningkatkan kualitas instruksional di kelas",
+                "Pembangunan sarana sanitasi dan air bersih sekolah untuk mendukung lingkungan belajar sehat"
+            ],
+            "UMUM_SEDANG": [
+                "Penguatan kompetensi manajerial kepala sekolah melalui Program Sekolah Penggerak",
+                "Integrasi Platform Merdeka Mengajar (PMM) dalam pengembangan modul ajar berbasis kearifan lokal",
+                "Optimalisasi Dana BOS Kinerja untuk mendukung program literasi dan numerasi tingkat wilayah",
+                "Implementasi asesmen nasional sebagai basis evaluasi dan pembenahan kualitas sekolah",
+                "Peningkatan kerjasama sekolah dengan komite pendidikan untuk transparansi anggaran",
+                "Pengembangan komunitas praktisi guru sebagai wadah pertukaran metode ajar inovatif"
+            ],
+            "UMUM_TINGGI": [
+                "Pengembangan pusat keunggulan (Center of Excellence) dan kolaborasi akademik internasional",
+                "Inisiasi program transformasi digital pendidikan berbasis kecerdasan buatan (AI) dan STEM",
+                "Pemberian penghargaan dan beasiswa riset bagi talenta daerah berprestasi tingkat nasional",
+                "Implementasi kurikulum berbasis talenta global (Global Talent) di sekolah-sekolah unggulan",
+                "Fasilitasi program pertukaran pelajar antar negara untuk penguatan wawasan global",
+                "Penyediaan dana abadi pendidikan tingkat daerah untuk mendukung inovasi berkelanjutan"
+            ]
+        }
+
 
     def calculate_pgi(self, aps_value):
         """Hitung Participation Gap Index"""
@@ -49,13 +120,9 @@ class PendidikanAnalytics:
         """Hitung Weighted Education Risk Index"""
         weri = 0
         total_weight = 0
-        
-        # Map data ke jenjang
         jenjang_mapping = {
-            'APS_7_12': 'SD',
-            'APS_13_15': 'SMP',
-            'APS_16_18': 'SMA',
-            'APS_19_23': 'PT'
+            'APS_7_12': 'SD', 'APS_13_15': 'SMP', 
+            'APS_16_18': 'SMA', 'APS_19_23': 'PT'
         }
         
         for aps_key, jenjang in jenjang_mapping.items():
@@ -68,19 +135,12 @@ class PendidikanAnalytics:
         return round(weri / total_weight if total_weight > 0 else 0, 2)
 
     def categorize_province(self, aps_data):
-        """Kategorikan provinsi berdasarkan skor komposit"""
-        # Hitung skor rata-rata APS
-        aps_values = []
-        for key in ['APS_7_12', 'APS_13_15', 'APS_16_18', 'APS_19_23']:
-            if key in aps_data and aps_data[key] is not None:
-                aps_values.append(aps_data[key])
-        
+        """Kategorikan provinsi berdasarkan rata-rata APS"""
+        aps_values = [v for v in [aps_data.get(k) for k in ['APS_7_12', 'APS_13_15', 'APS_16_18', 'APS_19_23']] if v is not None]
         if not aps_values:
             return "SEDANG", 0
         
         avg_aps = sum(aps_values) / len(aps_values)
-        
-        # Kategori berdasarkan quartile
         if avg_aps >= 85:
             return "TINGGI", avg_aps
         elif avg_aps >= 70:
@@ -88,56 +148,15 @@ class PendidikanAnalytics:
         else:
             return "RENDAH", avg_aps
 
-    def generate_insights(self, provinsi, aps_data, kategori, avg_aps):
-        """Generate insight professional berdasarkan data"""
-        insights = []
-        
-        # Insight utama berdasarkan kategori
-        if kategori == "RENDAH":
-            insights.append(f"{provinsi} berada dalam kategori RENDAH")
-            insights.append(f"Rata-rata APS: {avg_aps:.1f}% (di bawah standar nasional)")
-        elif kategori == "SEDANG":
-            insights.append(f"{provinsi} berada dalam kategori SEDANG")
-            insights.append(f"Rata-rata APS: {avg_aps:.1f}% (mendekati standar nasional)")
-        else:
-            insights.append(f"{provinsi} berada dalam kategori TINGGI")
-            insights.append(f"Rata-rata APS: {avg_aps:.1f}% (di atas standar nasional)")
-        
-        # Insight per jenjang
-        for jenjang, aps_key, label in [
-            ('SD', 'APS_7_12', 'SD (7-12 tahun)'),
-            ('SMP', 'APS_13_15', 'SMP (13-15 tahun)'),
-            ('SMA', 'APS_16_18', 'SMA (16-18 tahun)'),
-            ('PT', 'APS_19_23', 'Perguruan Tinggi (19-23 tahun)')
-        ]:
-            if aps_key in aps_data and aps_data[aps_key] is not None:
-                aps_value = aps_data[aps_key]
-                pgi = self.calculate_pgi(aps_value)
-                
-                # Threshold untuk setiap jenjang
-                thresholds = {'SD': 95, 'SMP': 85, 'SMA': 70, 'PT': 30}
-                threshold = thresholds.get(jenjang, 80)
-                
-                if aps_value < threshold:
-                    insights.append(f"🎓 {label}: {aps_value:.1f}% (PGI: {pgi:.1f}%) - di bawah target {threshold}%")
-                else:
-                    insights.append(f"✅ {label}: {aps_value:.1f}% - memenuhi target")
-        
-        # Insight WERI
-        weri = self.calculate_weri(aps_data)
-        if weri > 30:
-            insights.append(f"📉 WERI: {weri:.1f} - Risiko pendidikan tinggi")
-        elif weri > 20:
-            insights.append(f"⚠️ WERI: {weri:.1f} - Risiko pendidikan sedang")
-        else:
-            insights.append(f"✅ WERI: {weri:.1f} - Risiko pendidikan rendah")
-        
-        return insights
-
     def generate_recommendations(self, kategori, aps_data):
-        """Generate rekomendasi kebijakan profesional"""
+        """
+        GENERATE DYNAMIC RECOMMENDATIONS
+        Logika ini membandingkan skor dengan target ideal untuk menentukan 
+        apakah wilayah butuh 'Penguatan' atau 'Optimasi'.
+        """
         recommendations = []
         
+<<<<<<< HEAD
         # Rekomendasi berdasarkan kategori
         if kategori == "RENDAH":
             recommendations.append({
@@ -161,11 +180,54 @@ class PendidikanAnalytics:
                     'Pengembangan literasi dan numerasi berbasis standar asesmen nasional'
                 ]
             })
+=======
+        # 1. Identifikasi Titik Lemah (Bottleneck Analysis) dengan Nama Ramah Awam
+        # PT diganti menjadi Pendidikan Tinggi agar tidak membingungkan
+        targets = {'SD': 95, 'SMP': 85, 'SMA': 75, 'Pendidikan Tinggi': 35}
+        
+        jenjang_status = [
+            (aps_data.get('APS_7_12', 100), 'SD', 'KRITIS_SD'),
+            (aps_data.get('APS_13_15', 100), 'SMP', 'KRITIS_SMP'),
+            (aps_data.get('APS_16_18', 100), 'SMA', 'KRITIS_SMA'),
+            (aps_data.get('APS_19_23', 100), 'Pendidikan Tinggi', 'KRITIS_PT'),
+        ]
+        
+        # Urutkan berdasarkan skor terkecil secara absolut
+        jenjang_status.sort(key=lambda x: x[0]) 
+        skor_aktual, label_jenjang, key_pool = jenjang_status[0]
+
+        # 2. Penentuan Judul Strategis & Prioritas Berdasarkan Kondisi Riil
+        target_ideal = targets.get(label_jenjang, 80)
+        
+        # Jika skor di bawah target: Butuh Penguatan (Kritis/Waspada)
+        # Jika skor di atas target: Cukup Optimasi & Inovasi (Aman)
+        if skor_aktual < target_ideal:
+            judul_strategis = f"Penguatan {label_jenjang}"
+            prioritas = "Tinggi" if kategori == "RENDAH" else "Sedang"
+>>>>>>> origin/putu-febrian
         else:
+            judul_strategis = f"Optimasi & Inovasi {label_jenjang}"
+            prioritas = "Rendah" # Wilayah sudah aman/bagus
+
+        # 3. Susun Aksi Secara Acak (Dinamis)
+        # Mengambil sampel dari bank data tindakan
+        actions = random.sample(self.action_pool[key_pool], 2)
+        key_umum = f"UMUM_{kategori}"
+        actions.extend(random.sample(self.action_pool[key_umum], 2))
+
+        recommendations.append({
+            'priority': prioritas,
+            'title': f'Fokus Strategis: {judul_strategis}',
+            'actions': actions
+        })
+
+        # 4. Tambahkan Catatan Khusus untuk Kondisi Ekstrem (Anomali)
+        if skor_aktual < 60:
             recommendations.append({
-                'priority': 'Rendah',
-                'title': 'Pemeliharaan & Inovasi',
+                'priority': 'Darurat',
+                'title': 'Intervensi Sosio-Kultural',
                 'actions': [
+<<<<<<< HEAD
                     'Implementasi transformasi digital pendidikan melalui bantuan perangkat TIK sekolah',
                     'Pengembangan kurikulum berbasis talenta tinggi dan penguatan STEM (Science, Technology, Engineering, and Math)',
                     'Pemberian beasiswa prestasi tingkat lanjut dan sertifikasi kompetensi internasional',
@@ -194,11 +256,39 @@ class PendidikanAnalytics:
                     'Program khusus untuk jenjang tersebut',
                     'Monitoring partisipasi bulanan',
                     'Intervensi berbasis data real-time'
+=======
+                    f"Mengingat angka partisipasi {label_jenjang} hanya {skor_aktual}%, perlu investigasi mendalam terkait hambatan ekonomi lokal.",
+                    "Audit distribusi bantuan sosial pendidikan agar lebih tepat sasaran di wilayah ini."
+>>>>>>> origin/putu-febrian
                 ]
             })
-        
+
         return recommendations
 
+<<<<<<< HEAD
+=======
+    def generate_insights(self, provinsi, aps_data, kategori, avg_aps):
+        """Generate insight dengan gaya bahasa yang lebih variatif"""
+        # Variasi prefix agar tidak membosankan
+        prefixes = [
+            f"Analisis untuk {provinsi} menunjukkan",
+            f"Berdasarkan data terbaru, wilayah {provinsi}",
+            f"Catatan strategis untuk {provinsi}:",
+            f"Performa pendidikan di {provinsi}"
+        ]
+        
+        insights = [f"{random.choice(prefixes)} berada pada kategori {kategori} dengan rerata indeks {avg_aps:.1f}%."]
+        
+        # Cek anomali spesifik
+        if aps_data.get('APS_16_18', 100) < 70:
+            insights.append(f"⚠️ Perhatian khusus diperlukan pada jenjang SMA/SMK yang berada di bawah ambang batas kritis.")
+        
+        weri = self.calculate_weri(aps_data)
+        if weri > 25:
+            insights.append(f"📉 Skor risiko WERI ({weri:.1f}) mengindikasikan perlunya akselerasi kebijakan jangka pendek.")
+            
+        return insights
+>>>>>>> origin/putu-febrian
 
 # HELPER FUNCTIONS
 def normalize_name(name):

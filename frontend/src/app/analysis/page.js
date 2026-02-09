@@ -1,291 +1,80 @@
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
-import { usePathname } from "next/navigation";
+import { 
+  BarChart3, 
+  Heart, 
+  GraduationCap, 
+  ArrowRight
+} from 'lucide-react';
+import HeaderBar from '@/components/layout/HeaderBar';
 
-
-// Konfigurasi Kategori Sesuai Data Backend
-const KATEGORI = {
-  RENDAH: { warna: "#d73027", label: "RENDAH", status: "KRITIS" },
-  SEDANG: { warna: "#fee08b", label: "SEDANG", status: "WASPADA" },
-  TINGGI: { warna: "#1a9850", label: "TINGGI", status: "AMAN" }
-};
-
-const PUSAT_DEFAULT = [-2.5, 118];
-const ZOOM_DEFAULT = 5;
-
-export default function HalamanAnalisisPendidikan() {
-  const pathname = usePathname();
-
-  const [fileCsv, setFileCsv] = useState(null);
-  const [sedangMenganalisis, setSedangMenganalisis] = useState(false);
-  const [hasilAnalisis, setHasilAnalisis] = useState(null);
-  const [kategoriTerpilih, setKategoriTerpilih] = useState('SEMUA');
-  const [adalahClient, setAdalahClient] = useState(false);
-  const [petaSedangMemuat, setPetaSedangMemuat] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  const [menuUnduhTerbuka, setMenuUnduhTerbuka] = useState(false);
-  const [menuFilterTerbuka, setMenuFilterTerbuka] = useState(false);
-
-  const refInputFile = useRef(null);
-  const petaRef = useRef(null);
-
-  const [KontainerPeta, setKontainerPeta] = useState(null);
-  const [LapisanPeta, setLapisanPeta] = useState(null);
-  const [GeoJSON, setGeoJSON] = useState(null);
-  const [Skala, setSkala] = useState(null);
-
-  useEffect(() => {
-    setAdalahClient(true);
-    setPetaSedangMemuat(true);
-    import('react-leaflet').then((leaflet) => {
-      setKontainerPeta(() => leaflet.MapContainer);
-      setLapisanPeta(() => leaflet.TileLayer);
-      setGeoJSON(() => leaflet.GeoJSON);
-      setSkala(() => leaflet.ScaleControl);
-      setPetaSedangMemuat(false);
-    });
-    import('leaflet/dist/leaflet.css');
-  }, []);
-
-  const tanganiUnggahFile = (e) => {
-    const file = e.target.files[0];
-    if (file && file.name.endsWith('.csv')) {
-      setFileCsv(file);
-      toast.success(`Berkas "${file.name}" siap dianalisis`);
-    } else {
-      toast.error("Mohon unggah berkas format CSV");
-    }
-  };
-
-  const jalankanAnalisis = async () => {
-    if (!fileCsv) return toast.error('Silakan pilih berkas terlebih dahulu');
-    setSedangMenganalisis(true);
-    const petunjukMemuat = toast.loading('Sedang menganalisis data...');
-    const dataFormulir = new FormData();
-    dataFormulir.append('csv_file', fileCsv);
-
-    try {
-      const respons = await axios.post('http://127.0.0.1:8000/api/analyze-aps/', dataFormulir);
-      toast.dismiss(petunjukMemuat);
-      if (respons.data.status === 'success') {
-        setHasilAnalisis(respons.data);
-        toast.success(`Berhasil menganalisis ${respons.data.total_matched} wilayah`);
-      }
-    } catch (galat) {
-      toast.dismiss(petunjukMemuat);
-      toast.error('Gagal terhubung ke peladen');
-    } finally {
-      setSedangMenganalisis(false);
-    }
-  };
-
-  const eksporData = (format) => {
-    if (!hasilAnalisis) return toast.error("Data tidak tersedia");
-    const ringkasan = hasilAnalisis.analysis_summary;
-    setMenuUnduhTerbuka(false);
-
-    if (format === 'EXCEL') {
-      const lembarKerja = XLSX.utils.json_to_sheet(ringkasan);
-      const bukuKerja = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(bukuKerja, lembarKerja, "Analisis Pendidikan");
-      XLSX.writeFile(bukuKerja, "TERASEG_Pendidikan.xlsx");
-    } else if (format === 'JSON') {
-      const gumpalan = new Blob([JSON.stringify(hasilAnalisis, null, 2)], { type: 'application/json' });
-      unduhBerkas(gumpalan, 'TERASEG_Pendidikan.json');
-    } else if (format === 'CSV') {
-      const barisCsv = [
-        ["Provinsi", "Indeks Risiko", "Kategori", "Rata-rata Partisipasi"].join(","),
-        ...ringkasan.map(s => [s.provinsi, s.weri, s.kategori, s.rata_aps].join(","))
-      ].join("\n");
-      const gumpalan = new Blob([barisCsv], { type: 'text/csv' });
-      unduhBerkas(gumpalan, 'TERASEG_Pendidikan.csv');
-    } else if (format === 'GEOJSON') {
-      const gumpalan = new Blob([JSON.stringify(hasilAnalisis.matched_features, null, 2)], { type: 'application/json' });
-      unduhBerkas(gumpalan, 'TERASEG_Spasial_Pendidikan.geojson');
-    }
-  };
-
-  const unduhBerkas = (gumpalan, namaBerkas) => {
-    const tautan = URL.createObjectURL(gumpalan);
-    const elemen = document.createElement('a');
-    elemen.href = tautan; elemen.download = namaBerkas; elemen.click();
-    URL.revokeObjectURL(tautan);
-  };
-
-  const ambilDataTabelTerfilter = () => {
-    if (!hasilAnalisis?.matched_features?.features) return [];
-    const fitur = hasilAnalisis.matched_features.features;
-    if (kategoriTerpilih === 'SEMUA') return fitur;
-    return fitur.filter(f => f.properties?.analysis?.kategori === kategoriTerpilih);
-  };
-
-  const dataTerfilter = ambilDataTabelTerfilter();
-
-  if (!adalahClient) return null;
+export default function AnalysisPage() {
+  const analysisOptions = [
+    {
+      id: 'ekonomi',
+      title: 'Analisis Ekonomi',
+      description: 'Analisis data ekonomi, pertumbuhan, dan indikator keuangan daerah',
+      icon: BarChart3,
+      stats: '15+ indikator',
+      color: 'from-red-500 to-red-600',
+      badgeColor: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+      path: '/analysis/ekonomi'
+    },
+    {
+      id: 'pendidikan',
+      title: 'Analisis Pendidikan',
+      description: 'Analisis data pendidikan, sekolah, dan indikator literasi daerah',
+      icon: GraduationCap,
+      stats: '20+ dataset',
+      color: 'from-yellow-500 to-yellow-600',
+      badgeColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+      path: '/analysis/pendidikan'
+    },
+    {
+      id: 'kesehatan',
+      title: 'Analisis Kesehatan',
+      description: 'Analisis data kesehatan, fasilitas, dan indikator kesehatan masyarakat',
+      icon: Heart,
+      stats: '12+ metrik',
+      color: 'from-green-500 to-green-600',
+      badgeColor: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+      path: '/analysis/kesehatan'
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900 overflow-x-hidden">
-      {/* HEADER UTAMA */}
-      <nav className="bg-white border-b px-4 md:px-8 py-5 flex justify-between items-center shadow-sm sticky top-0 z-[1001]">
-        {/* LOGO KIRI */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-9 h-9 bg-[#0f172a] rounded-xl flex items-center justify-center shadow-lg shadow-slate-200">
-            <div className="w-3 h-3 border-2 border-cyan-400 rounded-full animate-pulse"></div>
-          </div>
-          <span className="text-xl font-black text-[#0f172a] tracking-[0.2em] uppercase">TERASEG</span>
-        </div>
-
-        {/* NAVIGASI TENGAH (Desktop) */}
-<div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-
-  <Link
-    href="/analisis_ekonomi"
-    className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all
-      ${pathname === "/analisis_ekonomi"
-        ? "text-blue-600 border-b-2 border-blue-600 pb-1"
-        : "text-gray-400 hover:text-blue-600"
-      }`}
-  >
-    <Wallet size={15} /> Ekonomi
-  </Link>
-
-  <Link
-    href="/analysis"
-    className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all
-      ${pathname === "/analysis"
-        ? "text-blue-600 border-b-2 border-blue-600 pb-1"
-        : "text-gray-400 hover:text-blue-600"
-      }`}
-  >
-    <School size={15} /> Pendidikan
-  </Link>
-
-  <Link
-    href="/analisis_kesehatan"
-    className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all
-      ${pathname === "/analisis_kesehatan"
-        ? "text-blue-600 border-b-2 border-blue-600 pb-1"
-        : "text-gray-400 hover:text-blue-600"
-      }`}
-  >
-    <HeartPulse size={15} /> Kesehatan
-  </Link>
-
-</div>
-
-
-        
-      </nav>
-
-      {/* MENU MOBILE OVERLAY */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-[1002] bg-white p-8 flex flex-col gap-6 animate-in slide-in-from-top duration-300">
-          <div className="flex justify-between items-center mb-8">
-            <span className="font-black text-[#0f172a] tracking-[0.2em] uppercase">MENU</span>
-            <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-full"><X size={24}/></button>
-          </div>
-          <Link href="/ekonomi" className="flex items-center gap-4 text-sm font-black text-slate-500 uppercase tracking-[0.2em] py-4 border-b border-slate-50">
-            <Wallet size={20} /> Ekonomi
-          </Link>
-          <Link href="/pendidikan" className="flex items-center gap-4 text-sm font-black text-blue-600 uppercase tracking-[0.2em] py-4 border-b border-slate-50">
-            <School size={20} /> Pendidikan
-          </Link>
-          <Link href="/kesehatan" className="flex items-center gap-4 text-sm font-black text-slate-500 uppercase tracking-[0.2em] py-4 border-b border-slate-50">
-            <HeartPulse size={20} /> Kesehatan
-          </Link>
-          <div className="mt-auto flex flex-col gap-4">
-             <div onClick={() => refInputFile.current?.click()} className="flex justify-center items-center gap-3 p-5 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl">
-                <Upload size={20} className="text-slate-400" />
-                <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">{fileCsv ? fileCsv.name : "PILIH BERKAS CSV"}</span>
-             </div>
-             <button onClick={() => { jalankanAnalisis(); setMobileMenuOpen(false); }} className="w-full p-5 bg-[#0f172a] text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200">MULAI ANALISIS ⚡</button>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-[1440px] mx-auto p-4 md:p-8">
-        {/* AREA PETA */}
-        <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-4 md:border-[12px] border-white h-[550px] md:h-[750px] relative overflow-hidden group">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8">
+      <HeaderBar />
+      
+      {/* Container untuk pusatkan card secara vertikal */}
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="w-full max-w-6xl mx-auto">
           
-          {/* OVERLAY UNGGAH DI ATAS PETA */}
-<div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000]">
-  <div className="flex items-center gap-3 bg-white/90 backdrop-blur 
-                  px-4 py-3 rounded-2xl shadow-lg border border-slate-100">
-    
-    {/* UNGGAH */}
-    <div 
-      onClick={() => refInputFile.current?.click()}
-      className="flex items-center gap-2 px-4 py-2 bg-slate-50 
-                 border border-slate-200 rounded-xl cursor-pointer 
-                 hover:bg-white hover:border-blue-400 transition-all group"
-    >
-      <Upload size={14} className="text-slate-400 group-hover:text-blue-500" />
-      <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider max-w-[120px] truncate">
-        {fileCsv ? fileCsv.name : "Unggah"}
-      </span>
-      <input
-        type="file"
-        ref={refInputFile}
-        hidden
-        onChange={tanganiUnggahFile}
-        accept=".csv"
-      />
-    </div>
-
-    {/* ANALISIS */}
-    <button
-      onClick={jalankanAnalisis}
-      disabled={sedangMenganalisis || !fileCsv}
-      className="px-6 py-2 bg-[#0f172a] text-white 
-                 rounded-xl font-black text-[10px] tracking-[0.2em] 
-                 hover:bg-blue-600 disabled:opacity-50 transition-all uppercase"
-    >
-      ANALISIS
-    </button>
-  </div>
-</div>
-
+          {/* Judul halaman di atas card */}
+          <div className="text-center mb-10">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              Dashboard Analisis
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Pilih kategori untuk melihat analisis data yang komprehensif
+            </p>
+          </div>
           
-          {!petaSedangMemuat && KontainerPeta && (
-            <KontainerPeta 
-              center={PUSAT_DEFAULT} 
-              zoom={ZOOM_DEFAULT} 
-              className="h-full w-full z-0" 
-              zoomControl={false}
-              ref={petaRef}
-            >
-              <LapisanPeta url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-              {hasilAnalisis?.matched_features?.features && (
-                <GeoJSON 
-                  key={JSON.stringify(hasilAnalisis.matched_features.features) + kategoriTerpilih}
-                  data={{ type: "FeatureCollection", features: hasilAnalisis.matched_features.features }}
-                  style={(fitur) => {
-                    const analisis = fitur.properties?.analysis || {};
-                    const terlihat = kategoriTerpilih === 'SEMUA' || analisis.kategori === kategoriTerpilih;
-                    return { 
-                      fillColor: analisis.warna || "#cbd5e1", 
-                      weight: 2, opacity: terlihat ? 1 : 0, 
-                      color: 'white', fillOpacity: terlihat ? 0.75 : 0 
-                    };
-                  }}
-                  onEachFeature={(fitur, lapisan) => {
-                    const analisis = fitur.properties?.analysis || {};
-                    const dataAps = analisis.aps_data || {};
-                    const wawasan = analisis.insights?.map(i => `<div style="margin-bottom:6px; padding-left:10px; border-left:3px solid ${analisis.warna}; font-weight: 600;">${i}</div>`).join('') || '';
-                    
-                    lapisan.bindTooltip(`
-                      <div style="font-family: inherit; padding: 6px;">
-                        <div style="font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.1em;">${analisis.nama_provinsi}</div>
-                        <div style="font-size: 10px; font-weight: 800; color: ${analisis.warna}; margin-top:2px;">STATUS: ${analisis.kategori}</div>
-                      </div>
-                    `, { sticky: true, opacity: 0.95 });
-
-                    const isiPopup = `
-                      <div style="font-family: inherit; min-width: 280px; color: #1e293b; padding: 5px;">
-                        <div style="background: ${analisis.warna}; color: white; padding: 15px; border-radius: 12px 12px 4px 4px; margin-bottom: 10px;">
-                          <div style="font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 0.1em;">${analisis.nama_provinsi}</div>
-                          <div style="font-size: 10px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">Analisis Strategis Wilayah</div>
+          {/* Cards Grid yang diatur di tengah */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 justify-items-center">
+            {analysisOptions.map((option) => {
+              const Icon = option.icon;
+              return (
+                <Link
+                  key={option.id}
+                  href={option.path}
+                  className="group block w-full max-w-sm"
+                >
+                  <div className="h-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-200 dark:border-gray-700">
+                    {/* Gradient Header */}
+                    <div className={`relative p-6 bg-gradient-to-r ${option.color}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="p-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm rounded-xl">
+                          <Icon className="h-8 w-8 text-white" />
                         </div>
                         <div className={`px-3 py-1 rounded-full text-sm font-medium ${option.badgeColor}`}>
                           {option.stats}

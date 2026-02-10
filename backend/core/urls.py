@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import analysis_views
+from . import kesehatan_views
 
 urlpatterns = [
     # ============ AI DETECTION & FEATURES ============
@@ -23,4 +24,11 @@ urlpatterns = [
     path('analysis/list/', analysis_views.get_analysis_list, name='get-analysis-list'),
     path('analysis/<str:analysis_id>/', analysis_views.get_analysis_detail, name='get-analysis-detail'),
     path('analysis/<str:analysis_id>/delete/', analysis_views.delete_analysis, name='delete-analysis'),
+    
+    # ============ HEALTH ANALYSIS (BPS API) ============
+    path('analyze-health-bps/', kesehatan_views.analyze_health_bps, name='analyze-health-bps'),
+    path('save-health-analysis/', kesehatan_views.save_health_analysis, name='save-health-analysis'),
+    path('health-analysis/list/', kesehatan_views.get_health_analysis_list, name='get-health-analysis-list'),
+    path('health-analysis/<str:analysis_id>/', kesehatan_views.get_health_analysis_detail, name='get-health-analysis-detail'),
+    path('health-analysis/<str:analysis_id>/delete/', kesehatan_views.delete_health_analysis, name='delete-health-analysis'),
 ]

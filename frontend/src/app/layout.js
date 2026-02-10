@@ -20,7 +20,7 @@ export const metadata = {
   },
   description: "app masih magang",
   icons: {
-    icon: "/icons/icon.png", 
+    icon: "/icon.png", 
   },
 };
 

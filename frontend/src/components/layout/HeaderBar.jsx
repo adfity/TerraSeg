@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Search, Sun, Moon, LogOut, User as UserIcon } from "lucide-react";
+import { Sun, Moon, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 export default function HeaderBar() {
     const router = useRouter();
     const pathname = usePathname();
-    const isMapPage = pathname === "/map";
     const isLandingPage = pathname === "/";
     const isAnalysisPage = pathname?.startsWith("/analysis");
     
@@ -17,6 +16,7 @@ export default function HeaderBar() {
     const [activeHash, setActiveHash] = useState("#home");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userName, setUserName] = useState("");
+    const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -30,6 +30,18 @@ export default function HeaderBar() {
         document.documentElement.setAttribute("data-theme", saved);
         setTheme(saved);
     }, [pathname]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showAnalysisDropdown && !event.target.closest('.dropdown-container')) {
+                setShowAnalysisDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showAnalysisDropdown]);
 
     useEffect(() => {
         if (!isLandingPage) return;
@@ -56,7 +68,6 @@ export default function HeaderBar() {
         document.documentElement.setAttribute("data-theme", next);
         localStorage.setItem("theme", next);
         setTheme(next);
-        // Toast alert dihapus seperti yang diminta
     };
 
     const handleSignOut = () => {
@@ -77,20 +88,7 @@ export default function HeaderBar() {
                 <Image src="/icons/wterra.png" alt="TerraSeg" width={90} height={36} className="hidden dark:block" />
             </Link>
 
-            {isMapPage && (
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[400px] md:w-[420px]">
-                    <div className="relative">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input
-                            type="text"
-                            placeholder="Search lokasi / koordinat / objek"
-                            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-                        />
-                    </div>
-                </div>
-            )}
-
-            {isLandingPage && (
+            {isLandingPage ? (
                 <nav className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100/80 dark:from-slate-800 dark:to-slate-800/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
                         {[
@@ -114,28 +112,67 @@ export default function HeaderBar() {
                         ))}
                     </div>
                 </nav>
-            )}
-
-            {isAnalysisPage && (
+            ) : (
                 <nav className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100/80 dark:from-slate-800 dark:to-slate-800/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
-                        {[
-                            { href: "/analysis/ekonomi", label: "Ekonomi" },
-                            { href: "/analysis/pendidikan", label: "Pendidikan" },
-                            { href: "/analysis/kesehatan", label: "Kesehatan" }
-                        ].map(item => (
-                            <Link 
-                                key={item.href}
-                                href={item.href} 
-                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                                    pathname === item.href 
+                        <Link 
+                            href="/"
+                            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                pathname === "/" 
+                                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/40 scale-105" 
+                                : "text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:shadow-md"
+                            }`}
+                        >
+                            Home
+                        </Link>
+                        
+                        <Link 
+                            href="/map"
+                            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                pathname === "/map" 
+                                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/40 scale-105" 
+                                : "text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:shadow-md"
+                            }`}
+                        >
+                            Map
+                        </Link>
+
+                        <div className="relative dropdown-container">
+                            <button
+                                onClick={() => setShowAnalysisDropdown(!showAnalysisDropdown)}
+                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-1 ${
+                                    isAnalysisPage || showAnalysisDropdown
                                     ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/40 scale-105" 
                                     : "text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:shadow-md"
                                 }`}
                             >
-                                {item.label}
-                            </Link>
-                        ))}
+                                Analisis
+                                <ChevronDown size={16} className={`transition-transform duration-300 ${showAnalysisDropdown ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showAnalysisDropdown && (
+                                <div className="absolute top-full mt-2 left-0 min-w-[180px] bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                                    {[
+                                        { href: "/analysis/ekonomi", label: "Ekonomi" },
+                                        { href: "/analysis/pendidikan", label: "Pendidikan" },
+                                        { href: "/analysis/kesehatan", label: "Kesehatan" }
+                                    ].map(item => (
+                                        <Link 
+                                            key={item.href}
+                                            href={item.href}
+                                            onClick={() => setShowAnalysisDropdown(false)}
+                                            className={`block px-5 py-3 text-sm font-medium transition-colors ${
+                                                pathname === item.href
+                                                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
+                                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                            }`}
+                                        >
+                                            {item.label}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </nav>
             )}

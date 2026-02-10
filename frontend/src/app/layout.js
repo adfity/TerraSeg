@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
+import Image from "next/image";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,7 +20,7 @@ export const metadata = {
   },
   description: "app masih magang",
   icons: {
-    icon: "/icon.png",
+    icon: "/icons/icon.png", 
   },
 };
 

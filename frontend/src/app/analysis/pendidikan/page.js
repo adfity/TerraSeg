@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { 
-  Upload, Download, FileText, AlertCircle, Plus, Minus, ChevronDown, Filter, Save, X
+  Upload, Download, FileText, AlertCircle, Plus, Minus, ChevronDown, Filter, Save, X, Loader2, Activity
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -173,102 +173,66 @@ export default function PendidikanPage() {
   if (!adalahClient) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <HeaderBar />
-      
-      {/* UPLOAD SECTION */}
-      <div className="pt-24 pb-8 px-4 md:px-8">
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-800 p-6 md:p-8">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
-              <div className="flex-1">
-                <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">
-                  Analisis Pendidikan
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  Unggah data CSV atau XLSX untuk menganalisis partisipasi pendidikan di Indonesia
-                </p>
+  <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <HeaderBar />
+
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pb-12 pt-24">
+      {/* AREA PETA */}
+      <div
+        className="
+          bg-white dark:bg-slate-900
+          rounded-[2.5rem] md:rounded-[3.5rem]
+          shadow-xl dark:shadow-slate-900/50
+          border-4 md:border-8 border-white dark:border-slate-800
+          h-[550px] md:h-[750px]
+          relative overflow-hidden group
+          transition-all duration-300
+        "
+      >
+        {/* OVERLAY UNGGAH DI ATAS PETA */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] w-fit">
+          <div className="flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-4 py-3 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-800">
+            {/* UNGGAH */}
+              <div 
+                onClick={() => refInputFile.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-white dark:hover:bg-slate-700 hover:border-blue-400 transition-all group"
+              >
+                <Upload size={14} className="text-slate-400 group-hover:text-blue-500" />
+                <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider max-w-[120px] truncate">
+                  {fileCsv ? fileCsv.name : "Unggah"}
+                </span>
+                <input
+                  type="file"
+                  ref={refInputFile}
+                  hidden
+                  onChange={tanganiUnggahFile}
+                  accept=".csv,.xlsx,.xls"
+                />
               </div>
-              
-              <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                <div 
-                  onClick={() => refInputFile.current?.click()}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-solid border-slate-300 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-500 transition-all group"
+
+              {/* ANALISIS */}
+              <button
+                onClick={jalankanAnalisis}
+                disabled={sedangMenganalisis || !fileCsv}
+                className="px-6 py-2 bg-[#0f172a] dark:bg-blue-600 text-white rounded-xl font-black text-[10px] tracking-[0.2em] hover:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-50 transition-all uppercase flex items-center gap-2"
+              >
+                {sedangMenganalisis && <Loader2 size={12} className="animate-spin" />}
+                {sedangMenganalisis ? 'PROSES...' : 'ANALISIS'}
+              </button>
+
+              {/* SIMPAN (Hanya muncul jika ada hasil) */}
+              {hasilAnalisis && (
+                <button
+                  onClick={bukaModalSave}
+                  className="px-4 py-2 bg-green-600 text-white rounded-xl font-black text-[10px] tracking-[0.2em] hover:bg-green-700 transition-all uppercase flex items-center gap-2"
                 >
-                  <Upload size={20} className="text-slate-400 dark:text-slate-500 group-hover:text-blue-500" />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider truncate max-w-[150px]">
-                    {fileCsv ? fileCsv.name : "Pilih File (CSV/XLSX)"}
-                  </span>
-                  <input type="file" ref={refInputFile} hidden onChange={tanganiUnggahFile} accept=".csv,.xlsx,.xls" />
-                </div>
-                
-                <button 
-                  onClick={jalankanAnalisis}
-                  disabled={sedangMenganalisis || !fileCsv}
-                  className="flex-1 md:flex-initial px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-600 text-white rounded-2xl font-black text-xs tracking-wider hover:shadow-xl hover:shadow-blue-500/30 dark:hover:shadow-blue-400/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase active:scale-95"
-                >
-                  {sedangMenganalisis ? 'Menganalisis...' : 'Mulai Analisis'}
+                  <Save size={14} />
+                  SIMPAN
                 </button>
-
-                {hasilAnalisis && (
-                  <button 
-                    onClick={bukaModalSave}
-                    className="flex-1 md:flex-initial px-8 py-4 bg-gradient-to-r from-green-600 to-green-500 dark:from-green-500 dark:to-green-600 text-white rounded-2xl font-black text-xs tracking-wider hover:shadow-xl hover:shadow-green-500/30 dark:hover:shadow-green-400/20 transition-all uppercase active:scale-95 flex items-center gap-2"
-                  >
-                    <Save size={16} /> Simpan
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* MODAL SAVE */}
-      {modalSaveTerbuka && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Simpan Analisis</h3>
-              <button onClick={() => setModalSaveTerbuka(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                <X size={20} className="text-slate-500" />
-              </button>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Nama Analisis</label>
-              <input 
-                type="text"
-                value={namaSimpan}
-                onChange={(e) => setNamaSimpan(e.target.value)}
-                placeholder="contoh: Analisis APS 2024"
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 outline-none transition-colors"
-                onKeyPress={(e) => e.key === 'Enter' && simpanAnalisis()}
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setModalSaveTerbuka(false)}
-                className="flex-1 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-              >
-                Batal
-              </button>
-              <button 
-                onClick={simpanAnalisis}
-                disabled={sedangMenyimpan || !namaSimpan.trim()}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {sedangMenyimpan ? 'Menyimpan...' : 'Simpan'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-[1440px] mx-auto px-4 md:px-8 pb-12">
-        {/* AREA PETA */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl dark:shadow-slate-900/50 border-4 md:border-8 border-white dark:border-slate-800 h-[550px] md:h-[750px] relative overflow-hidden group transition-all duration-300">
           {!petaSedangMemuat && KontainerPeta && (
             <KontainerPeta 
               center={PUSAT_DEFAULT} 
@@ -363,19 +327,91 @@ export default function PendidikanPage() {
           </div>
         </div>
 
+        {/* MODAL SAVE */}
+        {modalSaveTerbuka && (
+            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-8">
+                <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Simpan Analisis</h3>
+                <button onClick={() => setModalSaveTerbuka(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                    <X size={20} className="text-slate-500" />
+                </button>
+                </div>
+
+                <div className="mb-6">
+                <label className="block text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Nama Analisis</label>
+                <input 
+                    type="text"
+                    value={namaSimpan}
+                    onChange={(e) => setNamaSimpan(e.target.value)}
+                    placeholder="contoh: Analisis APS 2024"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 outline-none transition-colors"
+                    onKeyPress={(e) => e.key === 'Enter' && simpanAnalisis()}
+                />
+                </div>
+
+                <div className="flex gap-3">
+                <button 
+                    onClick={() => setModalSaveTerbuka(false)}
+                    className="flex-1 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                    Batal
+                </button>
+                <button 
+                    onClick={simpanAnalisis}
+                    disabled={sedangMenyimpan || !namaSimpan.trim()}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                    {sedangMenyimpan ? 'Menyimpan...' : 'Simpan'}
+                </button>
+                </div>
+            </div>
+            </div>
+        )}
+
         {/* TABEL HASIL */}
         <div className="mt-12">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300">
+            
+            {/* HEADER TABEL DENGAN PENJELASAN METODE */}
             <div className="p-8 md:p-12 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Matriks Strategi Kebijakan</h3>
+              <div className="flex-1">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Saran Strategi Kebijakan</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase mt-2 tracking-wider">
-                   Hasil Filter: <span className="text-blue-600 dark:text-blue-400 border-b-2 border-blue-100 dark:border-blue-900">{dataTerfilter.length}</span> Wilayah Ditemukan
+                    Hasil Filter: <span className="text-blue-600 dark:text-blue-400 border-b-2 border-blue-100 dark:border-blue-900">{dataTerfilter.length}</span> Wilayah Ditemukan
                 </p>
+              </div>
+
+              {/* PANEL INFORMASI PERHITUNGAN BAHASA AWAM */}
+              <div className="flex flex-col sm:flex-row gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <div className="flex items-start gap-3 max-w-[280px]">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                    <Activity size={14} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Metode Skor Risiko Pendidikan</p>
+                    <p className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
+                      Dihitung berdasarkan prioritas jenjang: SD (25%), SMP (30%), SMA (30%), dan Perguruan Tinggi (15%).
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700 self-center"></div>
+                
+                <div className="flex items-start gap-3 max-w-[280px]">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg shrink-0">
+                    <FileText size={14} className="text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Analisis Celah Partisipasi</p>
+                    <p className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
+                      Mengukur selisih antara target sekolah 100% dengan kenyataan partisipasi di lapangan.
+                    </p>
+                  </div>
+                </div>
               </div>
               
               <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                {/* FILTER DROPDOWN */}
                 <div className="relative flex-1 sm:flex-initial min-w-[140px]">
                   <button 
                     onClick={() => { setMenuFilterTerbuka(!menuFilterTerbuka); setMenuUnduhTerbuka(false); }}
@@ -400,7 +436,6 @@ export default function PendidikanPage() {
                   )}
                 </div>
 
-                {/* DOWNLOAD DROPDOWN */}
                 <div className="relative flex-1 sm:flex-initial min-w-[140px]">
                   <button 
                     onClick={() => { setMenuUnduhTerbuka(!menuUnduhTerbuka); setMenuFilterTerbuka(false); }}
@@ -434,9 +469,9 @@ export default function PendidikanPage() {
                   <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="px-8 py-6 text-center">No</th>
                     <th className="px-8 py-6">Wilayah</th>
-                    <th className="px-8 py-6 text-center">Indeks Resiko</th>
+                    <th className="px-8 py-6 text-center">Skor Risiko</th>
                     <th className="px-8 py-6">Status</th>
-                    <th className="px-8 py-6">Rekomendasi Strategis</th>
+                    <th className="px-8 py-6">Saran Kebijakan Strategis</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

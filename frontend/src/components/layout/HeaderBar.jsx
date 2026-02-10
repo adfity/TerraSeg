@@ -73,7 +73,7 @@ export default function HeaderBar() {
         <header className="fixed top-0 left-0 right-0 h-16 z-[1200] flex items-center px-4 md:px-5 backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
             
             <Link href="/" className="flex items-center hover:opacity-90 transition pl-2 md:pl-5">
-                <Image src="/icons/terrablack.png" alt="TerraSeg" width={90} height={36} className="block dark:hidden" />
+                <Image src="/icons/bterra.png" alt="TerraSeg" width={90} height={36} className="block dark:hidden" />
                 <Image src="/icons/wterra.png" alt="TerraSeg" width={90} height={36} className="hidden dark:block" />
             </Link>
 

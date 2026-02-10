@@ -17,7 +17,7 @@ export default function AnalysisPage() {
       stats: '15+ indikator',
       color: 'from-red-500 to-red-600',
       badgeColor: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-      path: '/analysis/ekonomi'
+      path: '/analisis/ekonomi'
     },
     {
       id: 'pendidikan',
@@ -27,7 +27,7 @@ export default function AnalysisPage() {
       stats: '20+ dataset',
       color: 'from-yellow-500 to-yellow-600',
       badgeColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-      path: '/analysis/pendidikan'
+      path: '/analisis/pendidikan'
     },
     {
       id: 'kesehatan',
@@ -37,7 +37,7 @@ export default function AnalysisPage() {
       stats: '12+ metrik',
       color: 'from-green-500 to-green-600',
       badgeColor: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-      path: '/analysis/kesehatan'
+      path: '/analisis/kesehatan'
     },
   ];
 

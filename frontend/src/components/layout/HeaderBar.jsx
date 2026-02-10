@@ -10,7 +10,7 @@ export default function HeaderBar() {
     const router = useRouter();
     const pathname = usePathname();
     const isLandingPage = pathname === "/";
-    const isAnalysisPage = pathname?.startsWith("/analysis");
+    const isAnalysisPage = pathname?.startsWith("/analisis");
     
     const [theme, setTheme] = useState("light");
     const [activeHash, setActiveHash] = useState("#home");
@@ -153,9 +153,9 @@ export default function HeaderBar() {
                             {showAnalysisDropdown && (
                                 <div className="absolute top-full mt-2 left-0 min-w-[180px] bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
                                     {[
-                                        { href: "/analysis/ekonomi", label: "Ekonomi" },
-                                        { href: "/analysis/pendidikan", label: "Pendidikan" },
-                                        { href: "/analysis/kesehatan", label: "Kesehatan" }
+                                        { href: "/analisis/ekonomi", label: "Ekonomi" },
+                                        { href: "/analisis/pendidikan", label: "Pendidikan" },
+                                        { href: "/analisis/kesehatan", label: "Kesehatan" }
                                     ].map(item => (
                                         <Link 
                                             key={item.href}

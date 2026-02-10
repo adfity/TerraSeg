@@ -211,7 +211,7 @@ export default function AnalysisPanel({ onClose, activeAnalysisId, setActiveAnal
       {/* FOOTER */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50">
         <button
-          onClick={() => router.push('/analysis/pendidikan')}
+          onClick={() => router.push('/analisis/pendidikan')}
           className="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-2xl font-bold text-sm tracking-wide hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all uppercase active:scale-95 flex items-center justify-center gap-3"
         >
           <Plus size={20} />

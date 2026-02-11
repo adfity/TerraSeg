@@ -3,8 +3,6 @@ from rest_framework.response import Response
 from pymongo import MongoClient
 import requests
 import uuid
-import pandas as pd
-import numpy as np
 from datetime import datetime
 import os
 from dotenv import load_dotenv
@@ -20,37 +18,37 @@ client = MongoClient(MONGO_URI)
 mongo_db = client[DB_MONGO_NAME]
 
 
-# KONFIGURASI INDIKATOR KESEHATAN BPS (Menggunakan data yang tersedia)
+# KONFIGURASI INDIKATOR KESEHATAN - MENGGUNAKAN DATA YANG DISEDIAKAN
 INDIKATOR_KESEHATAN = {
-    # Angka Kematian Bayi (AKB) per 1000 kelahiran hidup
-    "AKB": {
-        "variable_id": "1584",  # Infant Mortality Rate (IMR) Per 1000 Live Births by Province
-        "nama": "Angka Kematian Bayi",
-        "satuan": "per 1000 kelahiran",
-        "threshold_baik": 20,
-        "threshold_sedang": 30,
+    "AHH": {
+        "url_template": "https://webapi.bps.go.id/v1/api/list/model/data/lang/ind/domain/0000/var/501/th/124/key/{key}/",
+        "nama": "Angka Harapan Hidup",
+        "satuan": "tahun",
+        "threshold_baik": 72,      # > 72 tahun = baik
+        "threshold_sedang": 68,    # 68-72 tahun = sedang
         "bobot": 0.40,
-        "reverse": True
+        "reverse": False,  # Higher is better
+        "penjelasan": "Indikator utama kesehatan populasi yang mencerminkan kualitas layanan kesehatan, nutrisi, dan kondisi sanitasi"
     },
-    # Prevalensi Stunting
-    "STUNTING": {
-        "variable_id": "1325",  # Percentage of Toddlers Short And Very Short
-        "nama": "Prevalensi Stunting Balita",
+    "IMUNISASI": {
+        "url_template": "https://webapi.bps.go.id/v1/api/list/model/data/lang/ind/domain/0000/var/2280/th/124/key/{key}/",
+        "nama": "Cakupan Imunisasi Dasar Lengkap",
         "satuan": "%",
-        "threshold_baik": 20,
-        "threshold_sedang": 30,
-        "bobot": 0.30,
-        "reverse": True
+        "threshold_baik": 90,      # > 90% = baik
+        "threshold_sedang": 80,    # 80-90% = sedang
+        "bobot": 0.35,
+        "reverse": False,  # Higher is better
+        "penjelasan": "Mencerminkan efektivitas program preventif kesehatan, terutama untuk melindungi bayi dan anak dari penyakit menular"
     },
-    # Insiden Tuberkulosis
-    "TB": {
-        "variable_id": "1763",  # Incidence of Tuberculosis Per 100,000 Population
-        "nama": "Insiden Tuberkulosis",
-        "satuan": "per 100.000 penduduk",
-        "threshold_baik": 150,
-        "threshold_sedang": 250,
-        "bobot": 0.30,
-        "reverse": True
+    "SANITASI": {
+        "url_template": "https://webapi.bps.go.id/v1/api/list/model/data/lang/ind/domain/0000/var/847/th/125/key/{key}/",
+        "nama": "Akses Sanitasi Layak",
+        "satuan": "%",
+        "threshold_baik": 85,      # > 85% = baik
+        "threshold_sedang": 70,    # 70-85% = sedang
+        "bobot": 0.25,
+        "reverse": False,  # Higher is better
+        "penjelasan": "Indikator infrastruktur dasar kesehatan lingkungan yang berdampak langsung pada pencegahan penyakit"
     }
 }
 
@@ -60,82 +58,155 @@ class KesehatanAnalytics:
     
     def __init__(self):
         self.colors = {
-            "KRITIS": "#ef4444",
-            "WASPADA": "#f59e0b",
-            "STABIL": "#10b981"
+            "KRITIS": "#ef4444",     # Merah - kondisi buruk
+            "WASPADA": "#f59e0b",    # Kuning - perlu perhatian
+            "STABIL": "#10b981"      # Hijau - kondisi baik
         }
-        
-        self.bps_base_url = "https://webapi.bps.go.id/v1/api/list"
     
-    def fetch_bps_data(self, provinsi_code, indikator_key):
-        """Fetch data dari BPS Web API"""
-        try:
-            config = INDIKATOR_KESEHATAN[indikator_key]
-            
-            # Format URL BPS API untuk data (model=data)
-            url = f"{self.bps_base_url}/model/data/domain/{provinsi_code}/var/{config['variable_id']}/key/{BPS_API_KEY}/"
-            
-            print(f"Fetching: {url}")
-            response = requests.get(url, timeout=20)
-            
-            if response.status_code == 200:
-                data = response.json()
+    def fetch_all_data(self):
+        """Fetch semua data sekaligus dari BPS"""
+        all_data = {}
+        
+        for indikator_key, config in INDIKATOR_KESEHATAN.items():
+            try:
+                url = config["url_template"].format(key=BPS_API_KEY)
+                print(f"Fetching {indikator_key}: {url}")
                 
-                # Debug: print response structure
-                print(f"Response for {indikator_key}: {data.get('status')}")
+                response = requests.get(url, timeout=30)
                 
-                if data.get("status") == "OK" and "datacontent" in data:
-                    datacontent = data["datacontent"]
+                if response.status_code == 200:
+                    data = response.json()
+                    all_data[indikator_key] = data
+                    print(f"✓ {indikator_key}: Success")
+                else:
+                    print(f"✗ {indikator_key}: HTTP {response.status_code}")
+                    all_data[indikator_key] = None
                     
-                    if isinstance(datacontent, dict) and len(datacontent) > 0:
-                        # Ambil nilai pertama (data terbaru)
-                        first_value = list(datacontent.values())[0]
-                        if first_value is not None:
-                            return float(first_value)
-                
-                # Jika datacontent kosong, coba cari di structure lain
-                if "data" in data:
-                    data_list = data["data"]
-                    if isinstance(data_list, list) and len(data_list) > 1:
-                        items = data_list[1]
-                        if isinstance(items, list) and len(items) > 0:
-                            # Coba ambil nilai dari item pertama
-                            item = items[0]
-                            if isinstance(item, dict):
-                                value = item.get("value") or item.get("val")
-                                if value is not None:
-                                    return float(value)
+            except Exception as e:
+                print(f"✗ {indikator_key}: Error - {e}")
+                all_data[indikator_key] = None
+        
+        return all_data
+    
+    def parse_province_data(self, raw_data, indikator_key):
+        """Parse data per provinsi dari response BPS"""
+        province_values = {}
+        province_details = {}  # Menyimpan detail per gender untuk AHH
+        
+        if not raw_data:
+            return province_values, province_details
+        
+        try:
+            # Format response BPS:
+            # {
+            #   "datacontent": {
+            #     "15005012121240": 74.09,   # format: vervar_code + var + turvar + tahun + 0
+            #     "12005012121240": 72.3,
+            #     ...
+            #   },
+            #   "vervar": [
+            #     {"val": 1500, "label": "JAMBI"},
+            #     {"val": 1200, "label": "SUMATERA UTARA"},
+            #     ...
+            #   ],
+            #   "turvar": [
+            #     {"val": 1, "label": "Laki-laki"},
+            #     {"val": 2, "label": "Perempuan"}
+            #   ]
+            # }
             
-            return None
+            datacontent = raw_data.get("datacontent", {})
+            vervar_list = raw_data.get("vervar", [])
+            turvar_list = raw_data.get("turvar", [])
+            
+            # Buat mapping kode provinsi ke nama
+            province_code_map = {}
+            for item in vervar_list:
+                code = str(item.get("val", ""))
+                label = item.get("label", "")
+                if code and label and code != "9999":  # Skip INDONESIA
+                    province_code_map[code] = label
+            
+            # Buat mapping turvar (untuk gender di AHH)
+            turvar_map = {}
+            for item in turvar_list:
+                code = str(item.get("val", ""))
+                label = item.get("label", "")
+                turvar_map[code] = label
+            
+            # Temporary storage untuk menampung data per gender
+            temp_data = {}
+            
+            # Parse datacontent
+            # Key format contoh: "15005012121240" 
+            # - 4 digit pertama = kode provinsi (1500)
+            # - sisanya = var + turvar + tahun + 0
+            
+            for key, value in datacontent.items():
+                try:
+                    # Ambil 4 digit pertama sebagai kode provinsi
+                    prov_code = key[:4]
+                    
+                    # Skip INDONESIA (9999)
+                    if prov_code == "9999":
+                        continue
+                    
+                    # Cari nama provinsi
+                    provinsi_name = province_code_map.get(prov_code)
+                    
+                    if provinsi_name and value is not None:
+                        provinsi_clean = str(provinsi_name).upper().strip()
+                        value_float = float(value)
+                        
+                        # Untuk AHH yang ada turvar (Laki-laki/Perempuan)
+                        if turvar_map:
+                            # Ada turvar, berarti ada breakdown per gender
+                            # Extract turvar code (digit ke-8)
+                            try:
+                                turvar_code = key[7:8]  # Posisi turvar dalam key
+                                gender_label = turvar_map.get(turvar_code, "Unknown")
+                                
+                                if provinsi_clean not in temp_data:
+                                    temp_data[provinsi_clean] = {}
+                                
+                                temp_data[provinsi_clean][gender_label] = value_float
+                            except:
+                                # Fallback jika parsing turvar gagal
+                                if provinsi_clean in province_values:
+                                    province_values[provinsi_clean] = (province_values[provinsi_clean] + value_float) / 2
+                                else:
+                                    province_values[provinsi_clean] = value_float
+                        else:
+                            # Tidak ada turvar, langsung assign
+                            province_values[provinsi_clean] = value_float
+                        
+                except (ValueError, TypeError, IndexError) as e:
+                    continue
+            
+            # Hitung rata-rata untuk data yang punya breakdown gender
+            if temp_data:
+                for prov, gender_data in temp_data.items():
+                    # Simpan detail per gender
+                    province_details[prov] = gender_data
+                    
+                    # Hitung rata-rata untuk nilai utama
+                    values = list(gender_data.values())
+                    if values:
+                        province_values[prov] = round(sum(values) / len(values), 2)
+            
+            print(f"  Parsed {len(province_values)} provinces for {indikator_key}")
+            if province_details:
+                print(f"  Found gender breakdown for {len(province_details)} provinces")
+            
+            # Debug: print beberapa contoh
+            if province_values:
+                sample_provs = list(province_values.items())[:3]
+                print(f"  Sample: {sample_provs}")
             
         except Exception as e:
-            print(f"Error fetching BPS data for {indikator_key}: {e}")
-            return None
-    
-    def generate_synthetic_data(self, provinsi_name, indikator_key):
-        """Generate data sintetis berdasarkan pola regional (fallback)"""
-        import hashlib
+            print(f"  Parse error for {indikator_key}: {e}")
         
-        config = INDIKATOR_KESEHATAN[indikator_key]
-        
-        # Seed berdasarkan nama provinsi untuk konsistensi
-        seed = int(hashlib.md5(provinsi_name.encode()).hexdigest(), 16) % 10000
-        np.random.seed(seed)
-        
-        # Generate nilai di sekitar threshold
-        if indikator_key == "AKB":
-            # AKB: 15-35
-            base_value = np.random.uniform(15, 35)
-        elif indikator_key == "STUNTING":
-            # Stunting: 15-35%
-            base_value = np.random.uniform(15, 35)
-        elif indikator_key == "TB":
-            # TB: 100-300
-            base_value = np.random.uniform(100, 300)
-        else:
-            base_value = None
-        
-        return round(base_value, 2) if base_value else None
+        return province_values, province_details
     
     def calculate_health_index(self, data_kesehatan):
         """Hitung Indeks Kesehatan Komposit (IKK)"""
@@ -150,21 +221,13 @@ class KesehatanAnalytics:
             if not config:
                 continue
             
-            # Normalisasi skor (0-100)
-            if config.get("reverse", False):  # Lower is better
-                if value <= config["threshold_baik"]:
-                    score = 100
-                elif value <= config["threshold_sedang"]:
-                    score = 70
-                else:
-                    score = 40
-            else:  # Higher is better
-                if value >= config["threshold_baik"]:
-                    score = 100
-                elif value >= config["threshold_sedang"]:
-                    score = 70
-                else:
-                    score = 40
+            # Semua indikator kita higher is better
+            if value >= config["threshold_baik"]:
+                score = 100
+            elif value >= config["threshold_sedang"]:
+                score = 70
+            else:
+                score = 40
             
             total_score += score * config["bobot"]
             total_weight += config["bobot"]
@@ -207,29 +270,29 @@ class KesehatanAnalytics:
             nama = config["nama"]
             satuan = config["satuan"]
             
-            if key == "AKB":
-                if value > config["threshold_sedang"]:
-                    insights.append(f"🚨 {nama}: {value} {satuan} - TINGGI (Target: <{config['threshold_baik']})")
-                elif value > config["threshold_baik"]:
-                    insights.append(f"⚠️ {nama}: {value} {satuan} - Perlu perbaikan")
+            if key == "AHH":
+                if value < config["threshold_sedang"]:
+                    insights.append(f"📉 {nama}: {value} {satuan} - RENDAH (Target: >{config['threshold_baik']})")
+                elif value < config["threshold_baik"]:
+                    insights.append(f"⚠️ {nama}: {value} {satuan} - Perlu peningkatan")
                 else:
-                    insights.append(f"✅ {nama}: {value} {satuan} - Memenuhi target")
+                    insights.append(f"✅ {nama}: {value} {satuan} - Baik")
             
-            elif key == "STUNTING":
-                if value > config["threshold_sedang"]:
-                    insights.append(f"🚨 Stunting: {value}% - TINGGI (Target: <{config['threshold_baik']}%)")
-                elif value > config["threshold_baik"]:
-                    insights.append(f"⚠️ Stunting: {value}% - Perlu intervensi gizi")
+            elif key == "IMUNISASI":
+                if value < config["threshold_sedang"]:
+                    insights.append(f"🚨 {nama}: {value}% - RENDAH (Target: >{config['threshold_baik']}%)")
+                elif value < config["threshold_baik"]:
+                    insights.append(f"⚠️ {nama}: {value}% - Perlu ditingkatkan")
                 else:
-                    insights.append(f"✅ Stunting: {value}% - Terkendali")
+                    insights.append(f"✅ {nama}: {value}% - Sangat baik")
             
-            elif key == "TB":
-                if value > config["threshold_sedang"]:
-                    insights.append(f"🚨 {nama}: {value} {satuan} - TINGGI (Target: <{config['threshold_baik']})")
-                elif value > config["threshold_baik"]:
-                    insights.append(f"⚠️ {nama}: {value} {satuan} - Perlu penguatan program TB")
+            elif key == "SANITASI":
+                if value < config["threshold_sedang"]:
+                    insights.append(f"🚨 {nama}: {value}% - RENDAH (Target: >{config['threshold_baik']}%)")
+                elif value < config["threshold_baik"]:
+                    insights.append(f"⚠️ {nama}: {value}% - Perlu perbaikan infrastruktur")
                 else:
-                    insights.append(f"✅ {nama}: {value} {satuan} - Terkendali")
+                    insights.append(f"✅ {nama}: {value}% - Memadai")
         
         return insights
     
@@ -246,7 +309,7 @@ class KesehatanAnalytics:
                     'Alokasi anggaran darurat untuk perbaikan infrastruktur kesehatan',
                     'Penambahan tenaga kesehatan melalui program penugasan khusus',
                     'Program bantuan kesehatan gratis untuk kelompok rentan',
-                    'Pembangunan puskesmas dan posyandu di daerah terpencil',
+                    'Pembangunan puskesmas dan fasilitas sanitasi di daerah terpencil',
                     'Kampanye kesehatan ibu dan anak secara masif'
                 ]
             })
@@ -257,9 +320,9 @@ class KesehatanAnalytics:
                 'actions': [
                     'Optimalisasi BPJS Kesehatan dan JKN-KIS',
                     'Peningkatan kualitas layanan puskesmas dan rumah sakit',
-                    'Program pencegahan stunting terintegrasi',
+                    'Program imunisasi terintegrasi dan menyeluruh',
                     'Pelatihan dan sertifikasi tenaga kesehatan',
-                    'Pengadaan alat kesehatan dan obat-obatan esensial'
+                    'Pembangunan infrastruktur air bersih dan sanitasi'
                 ]
             })
         else:
@@ -276,136 +339,91 @@ class KesehatanAnalytics:
             })
         
         # Rekomendasi spesifik per indikator
-        akb = data_kesehatan.get("AKB")
-        if akb and akb > INDIKATOR_KESEHATAN["AKB"]["threshold_sedang"]:
+        ahh = data_kesehatan.get("AHH")
+        if ahh and ahh < INDIKATOR_KESEHATAN["AHH"]["threshold_sedang"]:
             recommendations.append({
-                'priority': 'Khusus - AKB',
-                'title': 'Program Penyelamatan Bayi',
+                'priority': 'Khusus - AHH',
+                'title': 'Peningkatan Angka Harapan Hidup',
                 'actions': [
-                    'Penguatan pelayanan kesehatan ibu dan bayi',
-                    'Program edukasi perawatan bayi baru lahir',
-                    'Penyediaan inkubator dan peralatan neonatal',
-                    'Pelatihan bidan dan perawat neonatal'
+                    'Program pencegahan penyakit tidak menular (PTM)',
+                    'Peningkatan akses layanan kesehatan primer',
+                    'Kampanye pola hidup sehat (GERMAS)',
+                    'Deteksi dini dan skrining kesehatan berkala'
                 ]
             })
         
-        stunting = data_kesehatan.get("STUNTING")
-        if stunting and stunting > INDIKATOR_KESEHATAN["STUNTING"]["threshold_sedang"]:
+        imunisasi = data_kesehatan.get("IMUNISASI")
+        if imunisasi and imunisasi < INDIKATOR_KESEHATAN["IMUNISASI"]["threshold_sedang"]:
             recommendations.append({
-                'priority': 'Khusus - Stunting',
-                'title': 'Percepatan Penurunan Stunting',
+                'priority': 'Khusus - Imunisasi',
+                'title': 'Percepatan Cakupan Imunisasi',
                 'actions': [
-                    'Pemberian makanan tambahan (PMT) untuk balita',
-                    'Edukasi gizi ibu hamil dan menyusui',
-                    'Monitoring tumbuh kembang balita rutin',
-                    'Program 1000 Hari Pertama Kehidupan (HPK)',
-                    'Pemberdayaan kader posyandu'
+                    'Program Bulan Imunisasi Anak Nasional (BIAN)',
+                    'Sosialisasi pentingnya imunisasi lengkap',
+                    'Penyediaan vaksin gratis dan mudah diakses',
+                    'Pemberdayaan kader posyandu untuk monitoring',
+                    'Sistem reminder imunisasi berbasis digital'
                 ]
             })
         
-        tb = data_kesehatan.get("TB")
-        if tb and tb > INDIKATOR_KESEHATAN["TB"]["threshold_sedang"]:
+        sanitasi = data_kesehatan.get("SANITASI")
+        if sanitasi and sanitasi < INDIKATOR_KESEHATAN["SANITASI"]["threshold_sedang"]:
             recommendations.append({
-                'priority': 'Khusus - Tuberkulosis',
-                'title': 'Pengendalian Tuberkulosis',
+                'priority': 'Khusus - Sanitasi',
+                'title': 'Perbaikan Akses Sanitasi Layak',
                 'actions': [
-                    'Program DOTS (Directly Observed Treatment Shortcourse)',
-                    'Skrining TB massal di wilayah endemis',
-                    'Penyediaan obat TB gratis dan berkelanjutan',
-                    'Edukasi pencegahan TB kepada masyarakat',
-                    'Peningkatan kapasitas laboratorium TB'
+                    'Program STBM (Sanitasi Total Berbasis Masyarakat)',
+                    'Pembangunan jamban sehat untuk rumah tangga miskin',
+                    'Penyediaan akses air bersih yang memadai',
+                    'Edukasi PHBS (Perilaku Hidup Bersih dan Sehat)',
+                    'Kemitraan dengan swasta untuk CSR sanitasi'
                 ]
             })
         
         return recommendations
 
 
-# KODE PROVINSI BPS (38 Provinsi - Updated 2024)
-KODE_PROVINSI_BPS = {
-    "ACEH": "11",
-    "SUMATERA UTARA": "12",
-    "SUMATERA BARAT": "13",
-    "RIAU": "14",
-    "JAMBI": "15",
-    "SUMATERA SELATAN": "16",
-    "BENGKULU": "17",
-    "LAMPUNG": "18",
-    "KEPULAUAN BANGKA BELITUNG": "19",
-    "KEPULAUAN RIAU": "21",
-    "DAERAH KHUSUS IBUKOTA JAKARTA": "31",  # DKI Jakarta
-    "JAWA BARAT": "32",
-    "JAWA TENGAH": "33",
-    "DAERAH ISTIMEWA YOGYAKARTA": "34",
-    "JAWA TIMUR": "35",
-    "BANTEN": "36",
-    "BALI": "51",
-    "NUSA TENGGARA BARAT": "52",
-    "NUSA TENGGARA TIMUR": "53",
-    "KALIMANTAN BARAT": "61",
-    "KALIMANTAN TENGAH": "62",
-    "KALIMANTAN SELATAN": "63",
-    "KALIMANTAN TIMUR": "64",
-    "KALIMANTAN UTARA": "65",
-    "SULAWESI UTARA": "71",
-    "SULAWESI TENGAH": "72",
-    "SULAWESI SELATAN": "73",
-    "SULAWESI TENGGARA": "74",
-    "GORONTALO": "75",
-    "SULAWESI BARAT": "76",
-    "MALUKU": "81",
-    "MALUKU UTARA": "82",
-    "PAPUA BARAT": "91",
-    "PAPUA": "94",
-    "PAPUA PEGUNUNGAN": "94",  
-    "PAPUA TENGAH": "94",      
-    "PAPUA SELATAN": "94",     
-    "PAPUA BARAT DAYA": "91"
-}
-
-
+# MAPPING NAMA PROVINSI
 def normalize_province_name(name):
-    """Normalisasi nama provinsi untuk matching dengan kode BPS"""
+    """Normalisasi nama provinsi untuk matching"""
     if not isinstance(name, str):
         name = str(name)
     
     name = name.upper().strip()
     
-    # Mapping khusus untuk nama yang sering berbeda
+    # Mapping khusus untuk nama yang berbeda antara BPS dan boundary data
     special_mappings = {
-        'DKI JAKARTA': 'DAERAH KHUSUS IBUKOTA JAKARTA',
-        'JAKARTA': 'DAERAH KHUSUS IBUKOTA JAKARTA',
-        'DIY': 'DAERAH ISTIMEWA YOGYAKARTA',
+        'DKI JAKARTA': 'JAKARTA',
+        'DAERAH KHUSUS IBUKOTA JAKARTA': 'JAKARTA',
+        'DKI': 'JAKARTA',
         'YOGYAKARTA': 'DAERAH ISTIMEWA YOGYAKARTA',
+        'DIY': 'DAERAH ISTIMEWA YOGYAKARTA',
+        'D.I. YOGYAKARTA': 'DAERAH ISTIMEWA YOGYAKARTA',
+        'BANGKA BELITUNG': 'KEPULAUAN BANGKA BELITUNG',
+        'KEP. BANGKA BELITUNG': 'KEPULAUAN BANGKA BELITUNG',
+        'KEPULAUAN RIAU': 'KEPULAUAN RIAU',
+        'KEP. RIAU': 'KEPULAUAN RIAU',
     }
     
-    if name in special_mappings:
-        return special_mappings[name]
+    # Cek mapping khusus terlebih dahulu
+    for key, value in special_mappings.items():
+        if key in name:
+            return value
     
     # Singkatan umum
     abbreviations = {
         'KEP.': 'KEPULAUAN',
-        'DI': 'DAERAH ISTIMEWA',
-        'DKI': 'DAERAH KHUSUS IBUKOTA',
+        'KEP ': 'KEPULAUAN ',
         'NTB': 'NUSA TENGGARA BARAT',
         'NTT': 'NUSA TENGGARA TIMUR',
-        'KALBAR': 'KALIMANTAN BARAT',
-        'KALTENG': 'KALIMANTAN TENGAH',
-        'KALSEL': 'KALIMANTAN SELATAN',
-        'KALTIM': 'KALIMANTAN TIMUR',
-        'KALTARA': 'KALIMANTAN UTARA',
-        'SULUT': 'SULAWESI UTARA',
-        'SULTENG': 'SULAWESI TENGAH',
-        'SULSEL': 'SULAWESI SELATAN',
-        'SULTRA': 'SULAWESI TENGGARA',
-        'SULBAR': 'SULAWESI BARAT'
     }
     
     for abbr, full in abbreviations.items():
-        if name == abbr or name.startswith(abbr):
+        if abbr in name:
             name = name.replace(abbr, full)
     
     # Hapus prefix
-    prefixes = ['PROVINSI ', 'PROV. ', 'PROV ']
+    prefixes = ['PROVINSI ', 'PROV. ', 'PROV ', 'DAERAH KHUSUS IBUKOTA ']
     for prefix in prefixes:
         if name.startswith(prefix):
             name = name[len(prefix):]
@@ -415,7 +433,7 @@ def normalize_province_name(name):
 
 @api_view(['POST'])
 def analyze_health_bps(request):
-    """Analisis data kesehatan menggunakan BPS Web API dengan fallback ke data sintetis"""
+    """Analisis data kesehatan menggunakan BPS Web API dengan 3 indikator"""
     
     if not BPS_API_KEY:
         return Response({
@@ -424,113 +442,86 @@ def analyze_health_bps(request):
         }, status=500)
     
     try:
-        # Ambil daftar provinsi yang akan dianalisis
-        provinces_to_analyze = request.data.get('provinces', 'ALL')
+        # Inisialisasi analytics
+        analytics = KesehatanAnalytics()
         
-        # Jika ALL, analisis semua provinsi
-        if provinces_to_analyze == 'ALL':
-            provinces_list = list(KODE_PROVINSI_BPS.keys())
-        else:
-            provinces_list = [normalize_province_name(p) for p in provinces_to_analyze]
+        print("=== Mulai fetch data dari BPS ===")
+        # Fetch semua data sekaligus
+        raw_data = analytics.fetch_all_data()
+        
+        # Parse data per provinsi untuk setiap indikator
+        print("\n=== Parse data per provinsi ===")
+        parsed_data = {}
+        parsed_details = {}  # Untuk menyimpan breakdown per gender
+        for indikator_key in INDIKATOR_KESEHATAN.keys():
+            values, details = analytics.parse_province_data(
+                raw_data[indikator_key], 
+                indikator_key
+            )
+            parsed_data[indikator_key] = values
+            if details:
+                parsed_details[indikator_key] = details
         
         # Ambil data batas provinsi dari MongoDB
+        print("\n=== Load boundary data ===")
         cursor = mongo_db["batas_provinsi"].find({}, {'_id': 0})
         boundary_features = list(cursor)
         
-        # Buat mapping nama provinsi
+        # Buat mapping nama provinsi ke boundary
         province_map = {}
         for feature in boundary_features:
             props = feature.get('properties', {})
-            for field in ['name', 'NAMOBJ', 'WADMPR', 'Provinsi']:
+            for field in ['NAMOBJ', 'name', 'WADMPR', 'Provinsi']:
                 if field in props and props[field]:
                     official_name = str(props[field]).upper().strip()
                     normalized = normalize_province_name(official_name)
                     province_map[normalized] = feature
+                    # Simpan juga versi asli untuk partial matching
+                    province_map[official_name] = feature
         
-        # Inisialisasi analytics
-        analytics = KesehatanAnalytics()
+        print(f"Loaded {len(province_map)} province boundaries")
         
-        # Proses analisis
+        # Kumpulkan semua nama provinsi unik dari data BPS
+        all_provinces = set()
+        for indikator_data in parsed_data.values():
+            all_provinces.update(indikator_data.keys())
+        
+        print(f"\n=== Processing {len(all_provinces)} provinces ===")
+        
+        # Proses analisis per provinsi
         matched_features = []
         analysis_summary = []
         kategori_counts = {"KRITIS": 0, "WASPADA": 0, "STABIL": 0}
         
-        # Dataset untuk download
-        datasets = {
-            "AKB": [],
-            "STUNTING": [],
-            "TB": []
-        }
-        
-        total_attempted = 0
-        total_success = 0
-        total_api_success = 0
-        total_synthetic = 0
-        
-        print(f"Sedang mengambil data dari BPS untuk {len(provinces_list)} provinsi...")
-        
-        for prov_name in provinces_list:
-            total_attempted += 1
-            
-            # Cari kode BPS
-            bps_code = KODE_PROVINSI_BPS.get(prov_name)
-            if not bps_code:
-                print(f"Kode BPS tidak ditemukan untuk: {prov_name}")
-                continue
-            
-            # Fetch data dari BPS untuk setiap indikator
+        for prov_name in sorted(all_provinces):
+            # Kumpulkan data kesehatan untuk provinsi ini
             data_kesehatan = {}
-            api_success_count = 0
-            
-            print(f"\nFetching data untuk {prov_name} (kode: {bps_code})...")
-            
             for indikator_key in INDIKATOR_KESEHATAN.keys():
-                # Coba fetch dari BPS API
-                value = analytics.fetch_bps_data(bps_code, indikator_key)
-                
-                is_synthetic = False
-                # Jika gagal, gunakan data sintetis
-                if value is None:
-                    value = analytics.generate_synthetic_data(prov_name, indikator_key)
-                    is_synthetic = True
-                    print(f"  - {indikator_key}: {value} (sintetis)")
-                else:
-                    api_success_count += 1
-                    print(f"  - {indikator_key}: {value} (BPS API)")
-                
+                value = parsed_data[indikator_key].get(prov_name)
                 data_kesehatan[indikator_key] = value
-                
-                # Simpan untuk dataset download
-                datasets[indikator_key].append({
-                    'provinsi': prov_name,
-                    'kode_bps': bps_code,
-                    'nilai': value,
-                    'satuan': INDIKATOR_KESEHATAN[indikator_key]['satuan'],
-                    'sumber': 'Sintetis' if is_synthetic else 'BPS API'
-                })
-            
-            # Hitung statistik
-            if api_success_count > 0:
-                total_api_success += 1
-            if api_success_count < len(INDIKATOR_KESEHATAN):
-                total_synthetic += 1
             
             # Skip jika tidak ada data sama sekali
             if not any(v is not None for v in data_kesehatan.values()):
-                print(f"Tidak ada data untuk {prov_name}, skip...")
                 continue
             
             # Cari matching boundary
-            matched_feature = province_map.get(prov_name)
-            if not matched_feature:
-                # Coba partial match
+            normalized_prov = normalize_province_name(prov_name)
+            matched_feature = None
+            
+            # Exact match
+            if normalized_prov in province_map:
+                matched_feature = province_map[normalized_prov]
+            elif prov_name in province_map:
+                matched_feature = province_map[prov_name]
+            else:
+                # Partial match
                 for map_name, feature in province_map.items():
-                    if prov_name in map_name or map_name in prov_name:
+                    if normalized_prov in map_name or map_name in normalized_prov:
                         matched_feature = feature
                         break
             
             if not matched_feature:
-                print(f"Boundary tidak ditemukan untuk: {prov_name}")
+                print(f"  ✗ {prov_name}: No boundary match")
                 continue
             
             # Hitung indeks kesehatan
@@ -544,7 +535,6 @@ def analyze_health_bps(request):
             
             # Update counts
             kategori_counts[kategori] += 1
-            total_success += 1
             
             # Tambahkan ke feature
             feature_copy = matched_feature.copy()
@@ -552,7 +542,6 @@ def analyze_health_bps(request):
             
             props['health_analysis'] = {
                 'nama_provinsi': prov_name,
-                'kode_bps': bps_code,
                 'kategori': kategori,
                 'warna': warna,
                 'health_index': health_index,
@@ -567,15 +556,16 @@ def analyze_health_bps(request):
             # Tambahkan ke summary
             analysis_summary.append({
                 'provinsi': prov_name,
-                'kode_bps': bps_code,
                 'kategori': kategori,
                 'warna': warna,
                 'health_index': health_index,
-                'akb': data_kesehatan.get('AKB'),
-                'stunting': data_kesehatan.get('STUNTING'),
-                'tb': data_kesehatan.get('TB'),
+                'ahh': data_kesehatan.get('AHH'),
+                'imunisasi': data_kesehatan.get('IMUNISASI'),
+                'sanitasi': data_kesehatan.get('SANITASI'),
                 'matched': True
             })
+            
+            print(f"  ✓ {prov_name}: {kategori} (Index: {health_index})")
         
         # Generate rekomendasi nasional
         national_recommendations = []
@@ -588,7 +578,7 @@ def analyze_health_bps(request):
                 'actions': [
                     'Alokasi dana darurat kesehatan untuk provinsi kritis',
                     'Task force kesehatan nasional',
-                    'Mobilisasi tenaga kesehatan lintas provinsi'
+                    'Mobilisasi sumber daya kesehatan lintas provinsi'
                 ]
             })
         
@@ -608,16 +598,92 @@ def analyze_health_bps(request):
         sorted_by_index = sorted(
             [s for s in analysis_summary if s['health_index'] is not None],
             key=lambda x: x['health_index']
-        )[:5]
+        )[:5]  # Top 5 terburuk
+        
+        # Dokumentasi metodologi
+        metodologi = {
+            "judul": "Metodologi Perhitungan Indeks Kesehatan Komposit (IKK)",
+            "deskripsi": "Indeks Kesehatan Komposit (IKK) menggabungkan 3 indikator kunci kesehatan dengan pembobotan berdasarkan dampak dan relevansi terhadap kualitas hidup masyarakat.",
+            "formula": "IKK = (Skor_AHH × 0.40) + (Skor_Imunisasi × 0.35) + (Skor_Sanitasi × 0.25)",
+            "catatan_gender": {
+                "indikator": "Angka Harapan Hidup (AHH)",
+                "metode": "Rata-rata dari AHH Laki-laki dan Perempuan",
+                "alasan": "AHH memiliki perbedaan biologis dan sosial antara laki-laki dan perempuan. Untuk mendapatkan gambaran populasi secara keseluruhan, digunakan rata-rata sederhana (simple average) dari kedua gender. Metode ini sesuai dengan praktik BPS dan standar internasional dalam menghitung indikator kesehatan agregat.",
+                "formula_ahh": "AHH_Provinsi = (AHH_Laki-laki + AHH_Perempuan) / 2",
+                "contoh": "JAMBI: (70.09 + 74.09) / 2 = 72.09 tahun"
+            },
+            "indikator": [
+                {
+                    "nama": "Angka Harapan Hidup (AHH)",
+                    "bobot": "40%",
+                    "alasan": "Indikator paling komprehensif yang mencerminkan hasil akhir dari seluruh sistem kesehatan, mencakup nutrisi, akses layanan, dan kondisi lingkungan. Bobot tertinggi karena merepresentasikan outcome utama kesehatan populasi.",
+                    "threshold": {
+                        "baik": "> 72 tahun (Skor: 100)",
+                        "sedang": "68-72 tahun (Skor: 70)",
+                        "rendah": "< 68 tahun (Skor: 40)"
+                    },
+                    "breakdown_gender": True,
+                    "metode_agregasi": "Rata-rata AHH Laki-laki dan Perempuan"
+                },
+                {
+                    "nama": "Cakupan Imunisasi Dasar Lengkap",
+                    "bobot": "35%",
+                    "alasan": "Indikator preventif yang sangat penting untuk melindungi generasi masa depan. Bobot tinggi karena imunisasi adalah intervensi cost-effective dengan dampak jangka panjang terhadap kesehatan populasi dan dapat mencegah KLB (Kejadian Luar Biasa).",
+                    "threshold": {
+                        "baik": "> 90% (Skor: 100)",
+                        "sedang": "80-90% (Skor: 70)",
+                        "rendah": "< 80% (Skor: 40)"
+                    },
+                    "breakdown_gender": False
+                },
+                {
+                    "nama": "Akses Sanitasi Layak",
+                    "bobot": "25%",
+                    "alasan": "Indikator infrastruktur dasar yang berdampak pada pencegahan penyakit menular dan kesehatan lingkungan. Bobot lebih rendah karena merupakan prasyarat (input) dibanding outcome langsung, namun tetap krusial untuk kesehatan jangka panjang.",
+                    "threshold": {
+                        "baik": "> 85% (Skor: 100)",
+                        "sedang": "70-85% (Skor: 70)",
+                        "rendah": "< 70% (Skor: 40)"
+                    },
+                    "breakdown_gender": False
+                }
+            ],
+            "kategori": [
+                {
+                    "nama": "STABIL",
+                    "range": "IKK ≥ 80",
+                    "makna": "Kondisi kesehatan baik, sistem berfungsi optimal"
+                },
+                {
+                    "nama": "WASPADA",
+                    "range": "60 ≤ IKK < 80",
+                    "makna": "Perlu penguatan, ada area yang memerlukan perbaikan"
+                },
+                {
+                    "nama": "KRITIS",
+                    "range": "IKK < 60",
+                    "makna": "Memerlukan intervensi segera, kondisi mengkhawatirkan"
+                }
+            ],
+            "validitas": "Pembobotan ini mengacu pada standar WHO dan Kemenkes RI, dengan penyesuaian konteks Indonesia. AHH mendapat bobot tertinggi karena merupakan outcome indikator yang mencerminkan efektivitas keseluruhan sistem kesehatan. Imunisasi sebagai indikator preventif kritikal mendapat bobot kedua. Sanitasi sebagai indikator infrastruktur/input mendapat bobot terendah namun tetap signifikan.",
+            "sumber_data": [
+                "BPS Web API - Angka Harapan Hidup (Var: 501) - Breakdown per Gender",
+                "BPS Web API - Cakupan Imunisasi Dasar Lengkap (Var: 2280)",
+                "BPS Web API - Akses Sanitasi Layak (Var: 847)"
+            ],
+            "catatan": "Analisis ini memberikan gambaran holistik kondisi kesehatan dengan mempertimbangkan aspek outcome (AHH), preventif (imunisasi), dan infrastruktur (sanitasi) secara berimbang."
+        }
+        
+        print(f"\n=== Analysis Complete ===")
+        print(f"Total matched: {len(matched_features)} provinces")
+        print(f"Distribution: KRITIS={kategori_counts['KRITIS']}, WASPADA={kategori_counts['WASPADA']}, STABIL={kategori_counts['STABIL']}")
         
         return Response({
             'status': 'success',
-            'source': f'BPS Web API ({total_api_success} provinsi) + Data Sintetis ({total_synthetic} provinsi)',
-            'total_attempted': total_attempted,
-            'total_success': total_success,
-            'total_api_success': total_api_success,
-            'total_synthetic': total_synthetic,
-            'success_rate': f"{total_success}/{total_attempted}",
+            'source': 'BPS Web API - Direct Endpoints',
+            'total_provinces': len(all_provinces),
+            'total_matched': len(matched_features),
+            'total_success': len(matched_features),  # Untuk kompatibilitas dengan frontend
             'kategori_distribusi': kategori_counts,
             'matched_features': {
                 "type": "FeatureCollection",
@@ -629,33 +695,22 @@ def analyze_health_bps(request):
             'colors': analytics.colors,
             'indikator_info': {k: {
                 'nama': v['nama'],
-                'satuan': v['satuan']
+                'satuan': v['satuan'],
+                'penjelasan': v['penjelasan'],
+                'bobot': v['bobot'],
+                'threshold_baik': v['threshold_baik'],
+                'threshold_sedang': v['threshold_sedang']
             } for k, v in INDIKATOR_KESEHATAN.items()},
-            'datasets': datasets,  # Dataset untuk download
-            'methodology': {
-                'formula': 'Indeks Kesehatan = (Skor_AKB × 0.4) + (Skor_STUNTING × 0.3) + (Skor_TB × 0.3)',
-                'scoring': {
-                    'AKB': {
-                        'baik': '≤ 20 → Skor 100',
-                        'sedang': '20-30 → Skor 70',
-                        'buruk': '> 30 → Skor 40'
-                    },
-                    'STUNTING': {
-                        'baik': '≤ 20% → Skor 100',
-                        'sedang': '20-30% → Skor 70',
-                        'buruk': '> 30% → Skor 40'
-                    },
-                    'TB': {
-                        'baik': '≤ 150 → Skor 100',
-                        'sedang': '150-250 → Skor 70',
-                        'buruk': '> 250 → Skor 40'
-                    }
-                },
-                'category': {
-                    'STABIL': 'Indeks ≥ 80',
-                    'WASPADA': 'Indeks 60-79',
-                    'KRITIS': 'Indeks < 60'
-                }
+            'metodologi': metodologi,
+            'raw_datasets': {
+                'AHH': parsed_data.get('AHH', {}),
+                'IMUNISASI': parsed_data.get('IMUNISASI', {}),
+                'SANITASI': parsed_data.get('SANITASI', {})
+            },
+            'raw_datasets_detail': {
+                'AHH_breakdown': parsed_details.get('AHH', {}),  # Include gender breakdown
+                'IMUNISASI': parsed_data.get('IMUNISASI', {}),
+                'SANITASI': parsed_data.get('SANITASI', {})
             }
         })
         
@@ -680,30 +735,16 @@ def save_health_analysis(request):
         if not analysis_data:
             return Response({"error": "Data analisis tidak ditemukan"}, status=400)
         
-        # Generate ID
         analysis_id = str(uuid.uuid4())
         
-        # Siapkan dokumen
         document = {
             "analysis_id": analysis_id,
             "name": analysis_name,
             "type": "health",
             "timestamp": datetime.now().isoformat(),
-            "status": analysis_data.get('status'),
-            "source": analysis_data.get('source'),
-            "total_attempted": analysis_data.get('total_attempted'),
-            "total_success": analysis_data.get('total_success'),
-            "success_rate": analysis_data.get('success_rate'),
-            "kategori_distribusi": analysis_data.get('kategori_distribusi'),
-            "matched_features": analysis_data.get('matched_features'),
-            "analysis_summary": analysis_data.get('analysis_summary'),
-            "national_recommendations": analysis_data.get('national_recommendations'),
-            "worst_provinces": analysis_data.get('worst_provinces'),
-            "colors": analysis_data.get('colors'),
-            "indikator_info": analysis_data.get('indikator_info')
+            **analysis_data
         }
         
-        # Simpan ke MongoDB
         mongo_db["health_analysis"].insert_one(document)
         
         return Response({
@@ -734,7 +775,7 @@ def get_health_analysis_list(request):
                 'analysis_id': 1,
                 'name': 1,
                 'timestamp': 1,
-                'total_success': 1,
+                'total_matched': 1,
                 'kategori_distribusi': 1
             }
         ).sort('timestamp', -1)

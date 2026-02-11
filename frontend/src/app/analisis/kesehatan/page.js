@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { 
-  Play, Download, AlertCircle, Plus, Minus, ChevronDown, Filter, Save, X, Activity, RefreshCw, FileDown, Info
+  Play, Download, AlertCircle, Plus, Minus, ChevronDown, Filter, Save, X, Activity, RotateCcw, Database, ChevronUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -28,14 +28,12 @@ export default function KesehatanPage() {
   const [menuUnduhTerbuka, setMenuUnduhTerbuka] = useState(false);
   const [menuFilterTerbuka, setMenuFilterTerbuka] = useState(false);
   const [menuDatasetTerbuka, setMenuDatasetTerbuka] = useState(false);
+  const [metodologiTerbuka, setMetodologiTerbuka] = useState(false);
   
   // Modal Save
   const [modalSaveTerbuka, setModalSaveTerbuka] = useState(false);
   const [namaSimpan, setNamaSimpan] = useState('');
   const [sedangMenyimpan, setSedangMenyimpan] = useState(false);
-
-  // Metodologi
-  const [showMethodology, setShowMethodology] = useState(false);
 
   const petaRef = useRef(null);
 
@@ -70,7 +68,7 @@ export default function KesehatanPage() {
       
       if (respons.data.status === 'success') {
         setHasilAnalisis(respons.data);
-        toast.success(`Berhasil menganalisis ${respons.data.total_success} dari ${respons.data.total_attempted} provinsi!`, {
+        toast.success(`Berhasil menganalisis ${respons.data.total_success} provinsi dari BPS!`, {
           duration: 5000
         });
       }
@@ -92,7 +90,8 @@ export default function KesehatanPage() {
   const resetAnalisis = () => {
     setHasilAnalisis(null);
     setKategoriTerpilih('SEMUA');
-    toast.success('Analisis direset');
+    setMetodologiTerbuka(false);
+    toast.success('Analisis berhasil direset');
   };
 
   const bukaModalSave = () => {
@@ -128,19 +127,84 @@ export default function KesehatanPage() {
     }
   };
 
-  const downloadDataset = (indikator) => {
-    if (!hasilAnalisis?.datasets) return toast.error("Dataset tidak tersedia");
+  const unduhDataset = (jenisDataset) => {
+    if (!hasilAnalisis?.raw_datasets) return toast.error("Dataset tidak tersedia");
     
-    const dataset = hasilAnalisis.datasets[indikator];
-    if (!dataset || dataset.length === 0) return toast.error(`Dataset ${indikator} kosong`);
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(dataset);
-    XLSX.utils.book_append_sheet(wb, ws, indikator);
-    XLSX.writeFile(wb, `Dataset_${indikator}_Kesehatan.xlsx`);
+    const datasets = hasilAnalisis.raw_datasets;
+    const datasetsDetail = hasilAnalisis.raw_datasets_detail || {};
+    const indikatorInfo = hasilAnalisis.indikator_info;
     
-    toast.success(`Dataset ${indikator} berhasil diunduh`);
     setMenuDatasetTerbuka(false);
+
+    if (jenisDataset === 'ALL') {
+      // Download semua dataset dalam satu file Excel dengan multiple sheets
+      const bukuKerja = XLSX.utils.book_new();
+      
+      // Sheet 1: AHH dengan breakdown gender
+      if (datasetsDetail.AHH_breakdown) {
+        const dataArrayAHH = Object.entries(datasetsDetail.AHH_breakdown).map(([provinsi, genderData]) => ({
+          'Provinsi': provinsi,
+          'Laki-laki (tahun)': genderData['Laki-laki'] || genderData['Laki-Laki'] || '-',
+          'Perempuan (tahun)': genderData['Perempuan'] || '-',
+          'Rata-rata (tahun)': datasets.AHH[provinsi] || '-'
+        }));
+        
+        const lembarKerjaAHH = XLSX.utils.json_to_sheet(dataArrayAHH);
+        XLSX.utils.book_append_sheet(bukuKerja, lembarKerjaAHH, "AHH (Gender Breakdown)");
+      }
+      
+      // Sheet 2: Imunisasi
+      const dataArrayImunisasi = Object.entries(datasets.IMUNISASI || {}).map(([provinsi, nilai]) => ({
+        'Provinsi': provinsi,
+        'Cakupan Imunisasi Dasar Lengkap (%)': nilai
+      }));
+      const lembarKerjaImunisasi = XLSX.utils.json_to_sheet(dataArrayImunisasi);
+      XLSX.utils.book_append_sheet(bukuKerja, lembarKerjaImunisasi, "Imunisasi");
+      
+      // Sheet 3: Sanitasi
+      const dataArraySanitasi = Object.entries(datasets.SANITASI || {}).map(([provinsi, nilai]) => ({
+        'Provinsi': provinsi,
+        'Akses Sanitasi Layak (%)': nilai
+      }));
+      const lembarKerjaSanitasi = XLSX.utils.json_to_sheet(dataArraySanitasi);
+      XLSX.utils.book_append_sheet(bukuKerja, lembarKerjaSanitasi, "Sanitasi");
+      
+      XLSX.writeFile(bukuKerja, "TERASEG_Semua_Dataset_Kesehatan_BPS.xlsx");
+      toast.success('Semua dataset berhasil diunduh!');
+    } else if (jenisDataset === 'AHH') {
+      // Download AHH dengan breakdown gender
+      if (datasetsDetail.AHH_breakdown) {
+        const dataArray = Object.entries(datasetsDetail.AHH_breakdown).map(([provinsi, genderData]) => ({
+          'Provinsi': provinsi,
+          'Laki-laki (tahun)': genderData['Laki-laki'] || genderData['Laki-Laki'] || '-',
+          'Perempuan (tahun)': genderData['Perempuan'] || '-',
+          'Rata-rata (tahun)': datasets.AHH[provinsi] || '-'
+        }));
+        
+        const lembarKerja = XLSX.utils.json_to_sheet(dataArray);
+        const bukuKerja = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(bukuKerja, lembarKerja, "AHH Gender Breakdown");
+        XLSX.writeFile(bukuKerja, "TERASEG_Dataset_AHH_BPS.xlsx");
+        toast.success('Dataset AHH dengan breakdown gender berhasil diunduh!');
+      } else {
+        toast.error('Data breakdown gender tidak tersedia');
+      }
+    } else {
+      // Download dataset individual (Imunisasi atau Sanitasi)
+      const dataset = datasets[jenisDataset] || {};
+      const info = indikatorInfo[jenisDataset];
+      
+      const dataArray = Object.entries(dataset).map(([provinsi, nilai]) => ({
+        'Provinsi': provinsi,
+        [`${info.nama} (${info.satuan})`]: nilai
+      }));
+      
+      const lembarKerja = XLSX.utils.json_to_sheet(dataArray);
+      const bukuKerja = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(bukuKerja, lembarKerja, jenisDataset);
+      XLSX.writeFile(bukuKerja, `TERASEG_Dataset_${jenisDataset}_BPS.xlsx`);
+      toast.success(`Dataset ${info.nama} berhasil diunduh!`);
+    }
   };
 
   const eksporData = (format) => {
@@ -153,9 +217,9 @@ export default function KesehatanPage() {
         'Provinsi': item.provinsi,
         'Kategori': item.kategori,
         'Indeks Kesehatan': item.health_index,
-        'AKB (per 1000)': item.akb || '-',
-        'Stunting (%)': item.stunting || '-',
-        'TB (per 100.000)': item.tb || '-'
+        'AHH (tahun)': item.ahh || '-',
+        'Imunisasi (%)': item.imunisasi || '-',
+        'Sanitasi (%)': item.sanitasi || '-'
       }));
       
       const lembarKerja = XLSX.utils.json_to_sheet(dataExport);
@@ -169,14 +233,14 @@ export default function KesehatanPage() {
       toast.success('File JSON berhasil diunduh');
     } else if (format === 'CSV') {
       const barisCsv = [
-        ["Provinsi", "Kategori", "Indeks Kesehatan", "AKB", "Stunting", "TB"].join(","),
+        ["Provinsi", "Kategori", "Indeks Kesehatan", "AHH", "Imunisasi", "Sanitasi"].join(","),
         ...ringkasan.map(s => [
           s.provinsi, 
           s.kategori, 
           s.health_index,
-          s.akb || '-',
-          s.stunting || '-',
-          s.tb || '-'
+          s.ahh || '-',
+          s.imunisasi || '-',
+          s.sanitasi || '-'
         ].join(","))
       ].join("\n");
       const gumpalan = new Blob([barisCsv], { type: 'text/csv' });
@@ -226,17 +290,17 @@ export default function KesehatanPage() {
                   </h2>
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  Analisis data kesehatan nasional menggunakan BPS Web API (Data Terbaru)
+                  Analisis data kesehatan nasional menggunakan BPS Web API
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="px-3 py-1 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-lg">
-                    🚼 Angka Kematian Bayi
+                  <span className="px-3 py-1 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-bold rounded-lg">
+                    📈 Angka Harapan Hidup
                   </span>
-                  <span className="px-3 py-1 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs font-bold rounded-lg">
-                    👶 Prevalensi Stunting
+                  <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-lg">
+                    💉 Cakupan Imunisasi Dasar
                   </span>
                   <span className="px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-bold rounded-lg">
-                    🦠 Insiden Tuberkulosis
+                    🚰 Akses Sanitasi Layak
                   </span>
                 </div>
               </div>
@@ -248,23 +312,23 @@ export default function KesehatanPage() {
                   className="flex-1 md:flex-initial px-8 py-4 bg-gradient-to-r from-red-600 to-red-500 dark:from-red-500 dark:to-red-600 text-white rounded-2xl font-black text-xs tracking-wider hover:shadow-xl hover:shadow-red-500/30 dark:hover:shadow-red-400/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase active:scale-95 flex items-center gap-2"
                 >
                   <Play size={16} className={sedangMenganalisis ? "animate-pulse" : ""} />
-                  {sedangMenganalisis ? 'Mengambil Data...' : 'Mulai Analisis'}
+                  {sedangMenganalisis ? 'Mengambil Data BPS...' : 'Mulai Analisis BPS'}
                 </button>
 
                 {hasilAnalisis && (
                   <>
                     <button 
-                      onClick={resetAnalisis}
-                      className="flex-1 md:flex-initial px-8 py-4 bg-gradient-to-r from-slate-600 to-slate-500 dark:from-slate-500 dark:to-slate-600 text-white rounded-2xl font-black text-xs tracking-wider hover:shadow-xl hover:shadow-slate-500/30 dark:hover:shadow-slate-400/20 transition-all uppercase active:scale-95 flex items-center gap-2"
-                    >
-                      <RefreshCw size={16} /> Reset
-                    </button>
-
-                    <button 
                       onClick={bukaModalSave}
                       className="flex-1 md:flex-initial px-8 py-4 bg-gradient-to-r from-green-600 to-green-500 dark:from-green-500 dark:to-green-600 text-white rounded-2xl font-black text-xs tracking-wider hover:shadow-xl hover:shadow-green-500/30 dark:hover:shadow-green-400/20 transition-all uppercase active:scale-95 flex items-center gap-2"
                     >
                       <Save size={16} /> Simpan
+                    </button>
+
+                    <button 
+                      onClick={resetAnalisis}
+                      className="flex-1 md:flex-initial px-8 py-4 bg-gradient-to-r from-slate-600 to-slate-500 dark:from-slate-500 dark:to-slate-600 text-white rounded-2xl font-black text-xs tracking-wider hover:shadow-xl hover:shadow-slate-500/30 dark:hover:shadow-slate-400/20 transition-all uppercase active:scale-95 flex items-center gap-2"
+                    >
+                      <RotateCcw size={16} /> Reset
                     </button>
                   </>
                 )}
@@ -276,7 +340,7 @@ export default function KesehatanPage() {
               <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-800">
                   <div className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Total Provinsi</div>
-                  <div className="text-2xl font-black text-blue-700 dark:text-blue-300">{hasilAnalisis.total_success}/{hasilAnalisis.total_attempted}</div>
+                  <div className="text-2xl font-black text-blue-700 dark:text-blue-300">{hasilAnalisis.total_success}</div>
                 </div>
                 <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 border border-red-200 dark:border-red-800">
                   <div className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Kritis</div>
@@ -289,19 +353,6 @@ export default function KesehatanPage() {
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 border border-green-200 dark:border-green-800">
                   <div className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider mb-1">Stabil</div>
                   <div className="text-2xl font-black text-green-700 dark:text-green-300">{hasilAnalisis.kategori_distribusi?.STABIL || 0}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Sumber Data Info */}
-            {hasilAnalisis && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-2">📊 Sumber Data</div>
-                <div className="text-sm text-blue-600 dark:text-blue-400 font-semibold">
-                  {hasilAnalisis.source}
-                </div>
-                <div className="text-xs text-blue-500 dark:text-blue-500 mt-1">
-                  ✓ Data BPS API: {hasilAnalisis.total_api_success} provinsi | ⚙ Data Sintetis: {hasilAnalisis.total_synthetic} provinsi
                 </div>
               </div>
             )}
@@ -400,17 +451,17 @@ export default function KesehatanPage() {
                         <div style="padding: 10px;">
                           <div style="font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">Indikator Kesehatan</div>
                           <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 15px;">
-                            <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #fca5a5;">
-                              <div style="font-size: 9px; font-weight: 900; color: #7f1d1d; text-transform: uppercase;">Angka Kematian Bayi</div>
-                              <div style="font-size: 13px; font-weight: 900; color: #dc2626;">${dataKesehatan.AKB ? dataKesehatan.AKB + ' per 1000 kelahiran' : '-'}</div>
+                            <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                              <div style="font-size: 9px; font-weight: 900; color: #14532d; text-transform: uppercase;">Angka Harapan Hidup</div>
+                              <div style="font-size: 13px; font-weight: 900; color: #16a34a;">${dataKesehatan.AHH ? dataKesehatan.AHH + ' tahun' : '-'}</div>
                             </div>
-                            <div style="background: #fed7aa; padding: 10px; border-radius: 8px; border: 1px solid #fdba74;">
-                              <div style="font-size: 9px; font-weight: 900; color: #7c2d12; text-transform: uppercase;">Prevalensi Stunting</div>
-                              <div style="font-size: 13px; font-weight: 900; color: #ea580c;">${dataKesehatan.STUNTING ? dataKesehatan.STUNTING + '%' : '-'}</div>
+                            <div style="background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #dbeafe;">
+                              <div style="font-size: 9px; font-weight: 900; color: #1e3a8a; text-transform: uppercase;">Cakupan Imunisasi</div>
+                              <div style="font-size: 13px; font-weight: 900; color: #2563eb;">${dataKesehatan.IMUNISASI ? dataKesehatan.IMUNISASI + '%' : '-'}</div>
                             </div>
-                            <div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border: 1px solid #d8b4fe;">
-                              <div style="font-size: 9px; font-weight: 900; color: #581c87; text-transform: uppercase;">Insiden Tuberkulosis</div>
-                              <div style="font-size: 13px; font-weight: 900; color: #9333ea;">${dataKesehatan.TB ? dataKesehatan.TB + ' per 100.000' : '-'}</div>
+                            <div style="background: #f5f3ff; padding: 10px; border-radius: 8px; border: 1px solid #e9d5ff;">
+                              <div style="font-size: 9px; font-weight: 900; color: #581c87; text-transform: uppercase;">Akses Sanitasi</div>
+                              <div style="font-size: 13px; font-weight: 900; color: #9333ea;">${dataKesehatan.SANITASI ? dataKesehatan.SANITASI + '%' : '-'}</div>
                             </div>
                           </div>
                           <div style="font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">Analisis</div>
@@ -455,76 +506,203 @@ export default function KesehatanPage() {
           </div>
         </div>
 
-        {/* METODOLOGI */}
+        {/* METODOLOGI SECTION */}
         {hasilAnalisis && (
           <div className="mt-8">
-            <button
-              onClick={() => setShowMethodology(!showMethodology)}
-              className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-indigo-500 dark:to-indigo-600 text-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <Info size={24} />
-                <span className="text-lg font-black uppercase tracking-wide">Metodologi & Rumus Perhitungan</span>
-              </div>
-              <ChevronDown size={20} className={`transition-transform ${showMethodology ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showMethodology && hasilAnalisis.methodology && (
-              <div className="mt-4 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
-                {/* Formula */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-black text-indigo-600 dark:text-indigo-400 uppercase mb-4">📐 Rumus Indeks Kesehatan</h3>
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-xl border-2 border-indigo-200 dark:border-indigo-800">
-                    <code className="text-lg font-mono font-bold text-indigo-900 dark:text-indigo-300">
-                      {hasilAnalisis.methodology.formula}
-                    </code>
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <button 
+                onClick={() => setMetodologiTerbuka(!metodologiTerbuka)}
+                className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
+                    <Database className="text-white" size={24} />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Metodologi & Dataset</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1">Klik untuk melihat cara perhitungan dan sumber data</p>
                   </div>
                 </div>
+                {metodologiTerbuka ? <ChevronUp size={24} className="text-slate-400" /> : <ChevronDown size={24} className="text-slate-400" />}
+              </button>
 
-                {/* Scoring */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-black text-purple-600 dark:text-purple-400 uppercase mb-4">📊 Sistem Penilaian</h3>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {Object.entries(hasilAnalisis.methodology.scoring).map(([key, values]) => (
-                      <div key={key} className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl border border-purple-200 dark:border-purple-800">
-                        <h4 className="font-black text-purple-900 dark:text-purple-300 uppercase mb-3">{key}</h4>
-                        <ul className="space-y-2 text-sm">
-                          {Object.entries(values).map(([kategori, nilai]) => (
-                            <li key={kategori} className="text-purple-700 dark:text-purple-400 font-semibold">
-                              <span className="capitalize">{kategori}:</span> {nilai}
-                            </li>
+              {metodologiTerbuka && (
+                <div className="px-8 pb-8 border-t border-slate-200 dark:border-slate-800">
+                  {/* Download Dataset */}
+                  <div className="mt-6 mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Unduh Dataset BPS</h4>
+                      <div className="relative">
+                        <button 
+                          onClick={() => { setMenuDatasetTerbuka(!menuDatasetTerbuka); }}
+                          className="px-5 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-purple-500/30 transition-all flex items-center gap-2"
+                        >
+                          <Download size={14} /> Unduh Dataset
+                        </button>
+
+                        {menuDatasetTerbuka && (
+                          <div className="absolute top-full mt-2 right-0 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl dark:shadow-slate-900/50 z-[1002] overflow-hidden border border-slate-200 dark:border-slate-700">
+                            <button 
+                              onClick={() => unduhDataset('ALL')}
+                              className="w-full text-left px-5 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all border-b border-slate-100 dark:border-slate-700 flex items-center gap-3"
+                            >
+                              <Database size={16} className="text-purple-600" /> Semua Dataset (Excel)
+                            </button>
+                            <button 
+                              onClick={() => unduhDataset('AHH')}
+                              className="w-full text-left px-5 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all border-b border-slate-100 dark:border-slate-700"
+                            >
+                              📈 Dataset Angka Harapan Hidup
+                            </button>
+                            <button 
+                              onClick={() => unduhDataset('IMUNISASI')}
+                              className="w-full text-left px-5 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border-b border-slate-100 dark:border-slate-700"
+                            >
+                              💉 Dataset Cakupan Imunisasi
+                            </button>
+                            <button 
+                              onClick={() => unduhDataset('SANITASI')}
+                              className="w-full text-left px-5 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all"
+                            >
+                              🚰 Dataset Akses Sanitasi
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {hasilAnalisis.indikator_info && Object.entries(hasilAnalisis.indikator_info).map(([key, info]) => (
+                        <div key={key} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                          <div className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{key}</div>
+                          <div className="text-sm font-bold text-slate-900 dark:text-white">{info.nama}</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">Satuan: {info.satuan}</div>
+                          <div className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-bold">Bobot: {(info.bobot * 100)}%</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Metodologi */}
+                  {hasilAnalisis.metodologi && (
+                    <div className="space-y-6">
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl p-6 border-2 border-purple-200 dark:border-purple-800">
+                        <h4 className="text-lg font-black text-purple-900 dark:text-purple-100 uppercase tracking-tight mb-2">{hasilAnalisis.metodologi.judul}</h4>
+                        <p className="text-sm text-purple-800 dark:text-purple-200 font-medium leading-relaxed mb-4">{hasilAnalisis.metodologi.deskripsi}</p>
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-purple-200 dark:border-purple-700">
+                          <div className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2">Formula Perhitungan</div>
+                          <code className="text-sm font-mono font-bold text-slate-900 dark:text-white">{hasilAnalisis.metodologi.formula}</code>
+                        </div>
+                      </div>
+
+                      {/* Penjelasan Rata-rata Gender untuk AHH */}
+                      {hasilAnalisis.metodologi.catatan_gender && (
+                        <div className="bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/20 dark:to-blue-800/20 rounded-2xl p-6 border-2 border-cyan-200 dark:border-cyan-800">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="p-2 bg-cyan-500 dark:bg-cyan-600 rounded-lg">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-sm font-black text-cyan-900 dark:text-cyan-100 uppercase tracking-wider mb-1">
+                                Catatan Penting: {hasilAnalisis.metodologi.catatan_gender.indikator}
+                              </h4>
+                              <div className="text-xs font-bold text-cyan-700 dark:text-cyan-300 mb-2">
+                                Metode: {hasilAnalisis.metodologi.catatan_gender.metode}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-cyan-200 dark:border-cyan-700 mb-3">
+                            <p className="text-xs text-cyan-900 dark:text-cyan-100 font-medium leading-relaxed mb-3">
+                              {hasilAnalisis.metodologi.catatan_gender.alasan}
+                            </p>
+                            <div className="bg-cyan-50 dark:bg-cyan-950/30 rounded-lg p-3 border border-cyan-200 dark:border-cyan-800">
+                              <div className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-1">Formula</div>
+                              <code className="text-xs font-mono font-bold text-cyan-900 dark:text-cyan-100">
+                                {hasilAnalisis.metodologi.catatan_gender.formula_ahh}
+                              </code>
+                            </div>
+                          </div>
+                          <div className="bg-gradient-to-r from-cyan-100 to-blue-100 dark:from-cyan-900/30 dark:to-blue-900/30 rounded-lg p-3 border border-cyan-300 dark:border-cyan-700">
+                            <div className="text-[10px] font-black text-cyan-700 dark:text-cyan-300 uppercase tracking-wider mb-1">Contoh Perhitungan</div>
+                            <code className="text-xs font-mono font-semibold text-cyan-900 dark:text-cyan-100">
+                              {hasilAnalisis.metodologi.catatan_gender.contoh}
+                            </code>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 gap-4">
+                        {hasilAnalisis.metodologi.indikator?.map((ind, idx) => (
+                          <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h5 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{ind.nama}</h5>
+                                  {ind.breakdown_gender && (
+                                    <span className="px-2 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-[10px] font-black rounded uppercase">
+                                      Gender Breakdown
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="inline-block mt-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-black rounded-lg">
+                                  Bobot: {ind.bobot}
+                                </span>
+                                {ind.metode_agregasi && (
+                                  <div className="mt-2 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">
+                                    📊 {ind.metode_agregasi}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold leading-relaxed mb-3">{ind.alasan}</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {Object.entries(ind.threshold).map(([level, value]) => (
+                                <div key={level} className="bg-white dark:bg-slate-900 rounded-lg p-2 border border-slate-200 dark:border-slate-700">
+                                  <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase">{level}</div>
+                                  <div className="text-xs font-bold text-slate-900 dark:text-white mt-1">{value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 rounded-2xl p-6 border-2 border-green-200 dark:border-green-800">
+                        <h4 className="text-sm font-black text-green-900 dark:text-green-100 uppercase tracking-wider mb-3">Kategori Hasil Analisis</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {hasilAnalisis.metodologi.kategori?.map((kat, idx) => (
+                            <div key={idx} className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-green-200 dark:border-green-700">
+                              <div className="text-xs font-black text-green-600 dark:text-green-400 uppercase tracking-wider">{kat.nama}</div>
+                              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">{kat.range}</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-300 mt-2">{kat.makna}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/20 dark:to-cyan-800/20 rounded-2xl p-6 border-2 border-blue-200 dark:border-blue-800">
+                        <h4 className="text-sm font-black text-blue-900 dark:text-blue-100 uppercase tracking-wider mb-2">Validitas Metodologi</h4>
+                        <p className="text-sm text-blue-800 dark:text-blue-200 font-medium leading-relaxed">{hasilAnalisis.metodologi.validitas}</p>
+                        <div className="mt-4 p-4 bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-700">
+                          <div className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Catatan Penting</div>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">{hasilAnalisis.metodologi.catatan}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <div className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Sumber Data</div>
+                        <ul className="space-y-1">
+                          {hasilAnalisis.metodologi.sumber_data?.map((sumber, idx) => (
+                            <li key={idx} className="text-xs text-slate-700 dark:text-slate-300 font-semibold">• {sumber}</li>
                           ))}
                         </ul>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Category */}
-                <div>
-                  <h3 className="text-xl font-black text-pink-600 dark:text-pink-400 uppercase mb-4">🏷️ Kategori Hasil</h3>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {Object.entries(hasilAnalisis.methodology.category).map(([cat, desc]) => (
-                      <div key={cat} className="bg-pink-50 dark:bg-pink-900/20 p-6 rounded-xl border border-pink-200 dark:border-pink-800">
-                        <div className="font-black text-pink-900 dark:text-pink-300 uppercase mb-2">{cat}</div>
-                        <div className="text-sm font-semibold text-pink-700 dark:text-pink-400">{desc}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Catatan Sumber Data */}
-                <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-black text-blue-900 dark:text-blue-300 uppercase mb-3">📅 Tentang Data</h4>
-                  <ul className="space-y-2 text-sm text-blue-700 dark:text-blue-400">
-                    <li>✓ <strong>Sumber API:</strong> Data langsung dari BPS Web API (webapi.bps.go.id)</li>
-                    <li>✓ <strong>Pembaruan:</strong> Data yang diambil adalah data terbaru yang tersedia di BPS</li>
-                    <li>✓ <strong>Fallback:</strong> Jika API tidak tersedia, sistem menggunakan data sintetis berbasis pola regional</li>
-                    <li>✓ <strong>Provinsi:</strong> 38 provinsi Indonesia (termasuk pemekaran Papua terbaru)</li>
-                  </ul>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -559,32 +737,6 @@ export default function KesehatanPage() {
                           className={`w-full text-left px-5 py-3 text-xs font-bold transition-all border-b border-slate-100 dark:border-slate-700 last:border-0 ${kategoriTerpilih === kat ? 'bg-red-500 dark:bg-red-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                         >
                           {kat}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* DOWNLOAD DATASET DROPDOWN */}
-                <div className="relative flex-1 sm:flex-initial min-w-[180px]">
-                  <button 
-                    onClick={() => { setMenuDatasetTerbuka(!menuDatasetTerbuka); setMenuUnduhTerbuka(false); setMenuFilterTerbuka(false); }}
-                    disabled={!hasilAnalisis}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 dark:from-purple-500 dark:to-purple-600 text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-purple-500/30 dark:hover:shadow-purple-400/20 transition-all flex items-center justify-between gap-3 tracking-wider disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-                  >
-                    <div className="flex items-center gap-2 uppercase"><FileDown size={16} /> DATASET</div>
-                    <ChevronDown size={16} />
-                  </button>
-
-                  {menuDatasetTerbuka && (
-                    <div className="absolute top-full mt-2 right-0 w-full bg-white dark:bg-slate-800 rounded-xl shadow-2xl dark:shadow-slate-900/50 z-[1002] overflow-hidden border border-slate-200 dark:border-slate-700">
-                      {['AKB', 'STUNTING', 'TB'].map(dataset => (
-                        <button 
-                          key={dataset} 
-                          onClick={() => downloadDataset(dataset)}
-                          className="w-full text-left px-5 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all border-b border-slate-100 dark:border-slate-700 last:border-0 flex items-center gap-3 uppercase tracking-wider"
-                        >
-                          <FileDown size={16} className="text-purple-500" /> {dataset}
                         </button>
                       ))}
                     </div>
@@ -626,9 +778,9 @@ export default function KesehatanPage() {
                     <th className="px-8 py-6 text-center">No</th>
                     <th className="px-8 py-6">Provinsi</th>
                     <th className="px-8 py-6 text-center">Indeks</th>
-                    <th className="px-8 py-6 text-center">AKB</th>
-                    <th className="px-8 py-6 text-center">Stunting</th>
-                    <th className="px-8 py-6 text-center">TB</th>
+                    <th className="px-8 py-6 text-center">AHH</th>
+                    <th className="px-8 py-6 text-center">Imunisasi</th>
+                    <th className="px-8 py-6 text-center">Sanitasi</th>
                     <th className="px-8 py-6">Status</th>
                     <th className="px-8 py-6">Rekomendasi</th>
                   </tr>
@@ -648,9 +800,9 @@ export default function KesehatanPage() {
                             {data.health_index}
                           </span>
                         </td>
-                        <td className="px-8 py-6 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{dataKesehatan.AKB ? `${dataKesehatan.AKB}` : '-'}</td>
-                        <td className="px-8 py-6 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{dataKesehatan.STUNTING ? `${dataKesehatan.STUNTING}%` : '-'}</td>
-                        <td className="px-8 py-6 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{dataKesehatan.TB ? `${dataKesehatan.TB}` : '-'}</td>
+                        <td className="px-8 py-6 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{dataKesehatan.AHH ? `${dataKesehatan.AHH} th` : '-'}</td>
+                        <td className="px-8 py-6 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{dataKesehatan.IMUNISASI ? `${dataKesehatan.IMUNISASI}%` : '-'}</td>
+                        <td className="px-8 py-6 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{dataKesehatan.SANITASI ? `${dataKesehatan.SANITASI}%` : '-'}</td>
                         <td className="px-8 py-6">
                           <span className="px-4 py-2 rounded-lg text-xs font-bold tracking-wider border-2 uppercase bg-white dark:bg-slate-800 shadow-sm" 
                                 style={{ borderColor: data.warna + '40', color: data.warna }}>

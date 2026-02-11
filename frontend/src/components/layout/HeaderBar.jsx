@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Sun, Moon, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
+import { Sun, Moon, LogOut, User as UserIcon, ChevronDown, Users, Utensils, TreePine, BarChart3 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,7 +29,7 @@ export default function HeaderBar() {
         const saved = localStorage.getItem("theme") || "light";
         document.documentElement.setAttribute("data-theme", saved);
         setTheme(saved);
-    }, [pathname]);
+    }, []);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -79,6 +79,42 @@ export default function HeaderBar() {
             setTimeout(() => router.push("/"), 500);
         }, 800);
     };
+
+    // Data Menu Analisis Terstruktur
+    const analysisMenus = [
+        {
+            category: "SDM Nasional",
+            icon: <Users size={14} />,
+            tech: "NoSQL Analysis",
+            type: "dropdown",
+            items: [
+                { href: "/analisis/ekonomi", label: "Ekonomi" },
+                { href: "/analisis/pendidikan", label: "Pendidikan" },
+                { href: "/analisis/kesehatan", label: "Kesehatan" },
+            ]
+        },
+        {
+            category: "Ketahanan Pangan",
+            icon: <Utensils size={14} />,
+            tech: "Spasial GeoAI",
+            type: "link",
+            href: "/analisis/pangan"
+        },
+        {
+            category: "Sumber Kekayaan Alam",
+            icon: <TreePine size={14} />,
+            tech: "Spasial GeoAI",
+            type: "link",
+            href: "/analisis/sda"
+        },
+        {
+            category: "Pertumbuhan Ekonomi",
+            icon: <BarChart3 size={14} />,
+            tech: "Big Data Analysis",
+            type: "link",
+            href: "/analisis/pertumbuhan-ekonomi"
+        }
+    ];
 
     return (
         <header className="fixed top-0 left-0 right-0 h-16 z-[1200] flex items-center px-4 md:px-5 backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
@@ -151,25 +187,50 @@ export default function HeaderBar() {
                             </button>
 
                             {showAnalysisDropdown && (
-                                <div className="absolute top-full mt-2 left-0 min-w-[180px] bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
-                                    {[
-                                        { href: "/analisis/ekonomi", label: "Ekonomi" },
-                                        { href: "/analisis/pendidikan", label: "Pendidikan" },
-                                        { href: "/analisis/kesehatan", label: "Kesehatan" }
-                                    ].map(item => (
-                                        <Link 
-                                            key={item.href}
-                                            href={item.href}
-                                            onClick={() => setShowAnalysisDropdown(false)}
-                                            className={`block px-5 py-3 text-sm font-medium transition-colors ${
-                                                pathname === item.href
-                                                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
-                                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                                            }`}
-                                        >
-                                            {item.label}
-                                        </Link>
-                                    ))}
+                                <div className="absolute top-full mt-3 left-0 w-[280px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-2 flex flex-col gap-1">
+                                        {analysisMenus.map((menu, idx) => (
+                                            <div key={idx} className="group">
+                                                {menu.type === "dropdown" ? (
+                                                    <div className="flex flex-col">
+                                                        <div className="px-4 py-3 flex flex-col border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-800/30 rounded-t-xl">
+                                                            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                                                                {menu.icon}
+                                                                {menu.category}
+                                                            </div>
+                                                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 ml-5 uppercase">{menu.tech}</span>
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 p-1 bg-slate-50/30 dark:bg-slate-800/10 rounded-b-xl mb-2">
+                                                            {menu.items.map((sub) => (
+                                                                <Link 
+                                                                    key={sub.href}
+                                                                    href={sub.href}
+                                                                    onClick={() => setShowAnalysisDropdown(false)}
+                                                                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${pathname === sub.href ? "bg-cyan-500 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-cyan-600 dark:hover:text-cyan-400"}`}
+                                                                >
+                                                                    {sub.label}
+                                                                </Link>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <Link 
+                                                        href={menu.href}
+                                                        onClick={() => setShowAnalysisDropdown(false)}
+                                                        className={`flex flex-col px-4 py-3 rounded-xl transition-all mb-1 ${pathname === menu.href ? "bg-cyan-500 text-white shadow-md" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                                                    >
+                                                        <div className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-wider ${pathname === menu.href ? "text-white" : "text-slate-700 dark:text-slate-200"}`}>
+                                                            {menu.icon}
+                                                            {menu.category}
+                                                        </div>
+                                                        <span className={`text-[9px] font-bold ml-5 uppercase ${pathname === menu.href ? "text-cyan-100" : "text-slate-400 dark:text-slate-500"}`}>
+                                                            {menu.tech}
+                                                        </span>
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -183,9 +244,9 @@ export default function HeaderBar() {
                     className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 >
                     {theme === "dark" ? (
-                        <Sun size={22} className="text-yellow-400" />
+                        <Sun size={20} className="text-yellow-400" />
                     ) : (
-                        <Moon size={22} className="text-slate-700" />
+                        <Moon size={20} className="text-slate-700" />
                     )}
                 </button>
 
@@ -193,20 +254,19 @@ export default function HeaderBar() {
                     <div className="flex items-center gap-1 md:gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                         <div className="hidden sm:flex items-center gap-2 px-2 md:px-3 py-1">
                             <div className="w-7 h-7 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-white">
-                                <UserIcon size={16} />
+                                <UserIcon size={14} />
                             </div>
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200 max-w-[100px] truncate">
                                 {userName}
                             </span>
                         </div>
                         <button onClick={handleSignOut} className="h-8 w-8 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition flex items-center justify-center">
-                            <LogOut size={18} />
+                            <LogOut size={16} />
                         </button>
                     </div>
                 ) : (
-                    <button onClick={() => router.push("/login")} className="h-9 md:h-10 px-3 md:px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-md font-semibold text-white transition active:scale-95">
-                        <span className="hidden sm:inline">Sign in / up</span>
-                        <span className="sm:hidden">Login</span>
+                    <button onClick={() => router.push("/login")} className="h-9 md:h-10 px-4 md:px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-md font-bold text-white text-sm transition active:scale-95">
+                        Login
                     </button>
                 )}
             </div>

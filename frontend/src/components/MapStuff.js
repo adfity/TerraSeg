@@ -3,16 +3,16 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import L from 'leaflet';
 import { 
-  GeoJSON, Polygon, Popup, useMap
+  GeoJSON, Polygon, Popup, useMap, useMapEvents
 } from 'react-leaflet';
 import { 
-  Home, Map as MapIcon, Layers, LocateFixed, Plus, Minus 
+  Home, Map as MapIcon, Layers, LocateFixed, Plus, Minus, Search, X, Eye, EyeOff
 } from 'lucide-react';
 import { useBoundaryData, BoundaryLayer } from './panel/layers';
 import { toast } from 'react-hot-toast';
 
-// ZOOM BUTTONS - KANAN BAWAH
-export function ZoomButtons() {
+// ZOOM BUTTONS
+export function ZoomButtons({ modeBersih }) {
   const map = useMap();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -23,23 +23,203 @@ export function ZoomButtons() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  if (modeBersih) return null;
+
   return (
-    <div className="fixed bottom-6 right-6 z-[1100]">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
-        <button 
-          onClick={() => map.zoomIn()} 
-          className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors`}
-        >
-          <Plus size={isMobile ? 20 : 24} />
-        </button>
-        <div className="h-[2px] bg-slate-200 dark:bg-slate-700" />
-        <button 
-          onClick={() => map.zoomOut()} 
-          className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors`}
-        >
-          <Minus size={isMobile ? 20 : 24} />
-        </button>
+    <div className="absolute top-20 left-6 z-[1000] flex flex-col gap-2">
+      <button
+        onClick={() => map.zoomIn()}
+        className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-90 border border-slate-200 dark:border-slate-700"
+        title="Zoom In"
+      >
+        <Plus size={16} strokeWidth={3} />
+      </button>
+      <button
+        onClick={() => map.zoomOut()}
+        className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-90 border border-slate-200 dark:border-slate-700"
+        title="Zoom Out"
+      >
+        <Minus size={16} strokeWidth={3} />
+      </button>
+    </div>
+  );
+}
+
+// KOORDINAT PENGIKUT KURSOR
+export function MouseCoordinate({ modeBersih }) {
+  const [coords, setCoords] = useState({ lat: 0, lng: 0 });
+  
+  useMapEvents({
+    mousemove: (e) => {
+      setCoords({
+        lat: e.latlng.lat.toFixed(4),
+        lng: e.latlng.lng.toFixed(4)
+      });
+    },
+  });
+
+  if (modeBersih) return null;
+
+  return (
+    <div className="absolute bottom-6 right-0 z-[1000]">
+      <div className="bg-white/75 dark:bg-slate-800/95 backdrop-blur-xl px-2 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+        <div className="text-xs font-bold text-slate-600 dark:text-slate-400">
+          <span className="text-blue-600 dark:text-blue-400">Lat:</span> {coords.lat} | <span className="text-blue-600 dark:text-blue-400">Lng:</span> {coords.lng}
+        </div>
       </div>
+    </div>
+  );
+}
+
+// SEARCH LOCATION - FIXED: Search by Province Name
+export function SearchLocation({ boundaryData, modeBersih }) {
+  const map = useMap();
+  const [searchTerbuka, setSearchTerbuka] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [provinsiDipilih, setProvinsiDipilih] = useState(null);
+
+  useEffect(() => {
+    if (!boundaryData?.provinsi?.features || !searchQuery.trim()) {
+      setSearchSuggestions([]);
+      return;
+    }
+    
+    // Filter berdasarkan nama provinsi
+    const suggestions = boundaryData.provinsi.features
+      .filter(f => f.properties?.Propinsi?.toLowerCase().includes(searchQuery.toLowerCase()))
+      .map(f => ({
+        nama: f.properties.Propinsi,
+        geometry: f.geometry
+      }))
+      .slice(0, 5);
+    
+    setSearchSuggestions(suggestions);
+  }, [searchQuery, boundaryData]);
+
+  const handleSearch = (namaProvinsi) => {
+    const provinsiNama = namaProvinsi || searchQuery;
+    if (!boundaryData?.provinsi?.features || !provinsiNama.trim()) return;
+    
+    const fitur = boundaryData.provinsi.features.find(f => 
+      f.properties?.Propinsi?.toLowerCase() === provinsiNama.toLowerCase()
+    );
+    
+    if (fitur && map) {
+      const coords = fitur.geometry.coordinates;
+      let lat, lng;
+      
+      if (fitur.geometry.type === "MultiPolygon") {
+        const polygon = coords[0][0];
+        lat = polygon.reduce((sum, coord) => sum + coord[1], 0) / polygon.length;
+        lng = polygon.reduce((sum, coord) => sum + coord[0], 0) / polygon.length;
+      } else if (fitur.geometry.type === "Polygon") {
+        const polygon = coords[0];
+        lat = polygon.reduce((sum, coord) => sum + coord[1], 0) / polygon.length;
+        lng = polygon.reduce((sum, coord) => sum + coord[0], 0) / polygon.length;
+      }
+      
+      map.setView([lat, lng], 7);
+      setProvinsiDipilih(fitur.properties.Propinsi);
+      
+      toast.success(
+        <div className="flex items-center gap-2">
+          <span className="text-xl">📍</span>
+          <div>
+            <div className="font-bold">Lokasi Ditemukan!</div>
+            <div className="text-xs">{fitur.properties.Propinsi}</div>
+          </div>
+        </div>,
+        {
+          duration: 3000,
+          style: {
+            background: '#fff',
+            color: '#333',
+            padding: '12px',
+            borderRadius: '12px'
+          }
+        }
+      );
+      
+      setSearchTerbuka(false);
+      setSearchQuery('');
+      setSearchSuggestions([]);
+    } else {
+      toast.error('Provinsi tidak ditemukan');
+    }
+  };
+
+  if (modeBersih) return null;
+
+  return (
+    <div className="absolute top-[220px] left-6 z-[1000]">
+      {searchTerbuka ? (
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+          <div className="p-2 flex gap-2">
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="Cari provinsi..."
+              className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:border-blue-500 outline-none w-48"
+              autoFocus
+            />
+            <button 
+              onClick={() => handleSearch()}
+              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-all"
+            >
+              <Search size={16} />
+            </button>
+            <button 
+              onClick={() => { setSearchTerbuka(false); setSearchQuery(''); setSearchSuggestions([]); setProvinsiDipilih(null); }}
+              className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-2 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-all"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          
+          {/* AUTOCOMPLETE SUGGESTIONS */}
+          {searchSuggestions.length > 0 && (
+            <div className="border-t border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto">
+              {searchSuggestions.map((sug, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSearch(sug.nama)}
+                  className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between group"
+                >
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{sug.nama}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <button 
+          onClick={() => setSearchTerbuka(true)}
+          className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-90 border border-slate-200 dark:border-slate-700"
+        >
+          <Search size={16}/>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// TOMBOL MODE BERSIH - REPOSITIONED
+export function CleanModeButton({ modeBersih, setModeBersih }) {
+  return (
+    <div className="absolute top-[170px] left-6 z-[1000]">
+      <button 
+        onClick={() => setModeBersih(!modeBersih)}
+        className="p-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all active:scale-90 border-2 border-white dark:border-slate-700 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-600"
+      >
+        {modeBersih ? (
+          <EyeOff size={16} className="text-white" />
+        ) : (
+          <Eye size={16} className="text-white" />
+        )}
+      </button>
     </div>
   );
 }
@@ -56,7 +236,7 @@ export function MapReset({ trigger, onDone }) {
 }
 
 // SIDEBAR BUTTONS - Dynamic icons untuk light/dark mode
-export function SidebarButtons({ activePanel, setActivePanel, setGoHome }) {
+export function SidebarButtons({ activePanel, setActivePanel, setGoHome, modeBersih }) {
   const [isMobile, setIsMobile] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
@@ -119,6 +299,8 @@ export function SidebarButtons({ activePanel, setActivePanel, setGoHome }) {
       setActivePanel(activePanel === btnId ? null : btnId);
     }
   };
+
+  if (modeBersih) return null;
 
   if (isMobile) {
     // MOBILE: Footer tengah horizontal
@@ -431,9 +613,11 @@ export function AnalysisLayer({ activeAnalysisData }) {
 // MAIN COMPONENT
 export default function MapStuff(props) {
   const { boundaryData, getBoundaryStyle, onEachBoundary } = useBoundaryData(props.activeLayers);
+  const [modeBersih, setModeBersih] = useState(false);
   
   return (
     <>
+      {/* 1. Base Boundary Layer */}
       <BoundaryLayer 
         activeLayers={props.activeLayers}
         boundaryData={boundaryData}
@@ -441,32 +625,43 @@ export default function MapStuff(props) {
         onEachBoundary={onEachBoundary}
       />
       
+      {/* 2. Analysis & GeoAI Layers */}
       <AnalysisLayer activeAnalysisData={props.activeAnalysisData} />
       
+      {/* 3. RBI Point Layers (Pendidikan, Kesehatan, dll) */}
       <RBILayer 
         activeLayers={props.activeLayers}
         rbiData={props.rbiData}
         getCategoryColor={props.getCategoryColor}
       />
       
+      {/* 4. Real-time Preview Layer (Segmentation) */}
       <PreviewLayer 
         previewData={props.previewData}
         setPreviewData={props.setPreviewData}
         getCategoryColor={props.getCategoryColor}
       />
       
+      {/* 5. Persistence Layer (Data dari MongoDB) */}
       <SavedDataLayer 
         data={props.data}
         onRefreshData={props.onRefreshData}
         getCategoryColor={props.getCategoryColor}
       />
       
-      <ZoomButtons />
+      {/* 6. Map UI Controls */}
+      <ZoomButtons modeBersih={modeBersih} />
+      <MouseCoordinate modeBersih={modeBersih} />
+      <CleanModeButton modeBersih={modeBersih} setModeBersih={setModeBersih} />
+      <SearchLocation boundaryData={boundaryData} modeBersih={modeBersih} />
+      
+      {/* 7. Map Utilities */}
       <MapReset trigger={props.goHome} onDone={() => props.setGoHome(false)} />
       <SidebarButtons 
         activePanel={props.activePanel}
         setActivePanel={props.setActivePanel}
         setGoHome={props.setGoHome}
+        modeBersih={modeBersih}
       />
     </>
   );

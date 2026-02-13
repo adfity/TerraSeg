@@ -17,6 +17,7 @@ export default function HeaderBar() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userName, setUserName] = useState("");
     const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -29,6 +30,60 @@ export default function HeaderBar() {
         const saved = localStorage.getItem("theme") || "light";
         document.documentElement.setAttribute("data-theme", saved);
         setTheme(saved);
+    }, []);
+
+    // Netflix-style scroll effect - detect map movement
+    useEffect(() => {
+        let scrollTimeout;
+        let isUserInteracting = false;
+
+        const handleMapInteraction = () => {
+            if (!isUserInteracting) {
+                isUserInteracting = true;
+                setIsScrolled(true);
+            }
+
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                isUserInteracting = false;
+                setIsScrolled(false);
+            }, 2000); // Kembali transparan setelah 2 detik tidak ada interaksi
+        };
+
+        // Detect scroll on window
+        const handleScroll = () => {
+            if (window.scrollY > 10) {
+                setIsScrolled(true);
+            } else {
+                setIsScrolled(false);
+            }
+        };
+
+        // Detect mouse movement and interactions
+        const handleMouseMove = () => {
+            handleMapInteraction();
+        };
+
+        const handleMouseDown = () => {
+            handleMapInteraction();
+        };
+
+        const handleWheel = () => {
+            handleMapInteraction();
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('wheel', handleWheel);
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mousedown', handleMouseDown);
+            window.removeEventListener('wheel', handleWheel);
+            clearTimeout(scrollTimeout);
+        };
     }, []);
 
     // Close dropdown when clicking outside
@@ -117,7 +172,11 @@ export default function HeaderBar() {
     ];
 
     return (
-        <header className="fixed top-0 left-0 right-0 h-16 z-[1200] flex items-center px-4 md:px-5 backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
+        <header className={`fixed top-0 left-0 right-0 h-16 z-[1200] flex items-center px-4 md:px-5 transition-all duration-300 ${
+            isScrolled 
+                ? 'bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-lg' 
+                : 'backdrop-blur-md bg-white/20 dark:bg-slate-900/10 border-b border-slate-200/50 dark:border-slate-800/50'
+        }`}>
             
             <Link href="/" className="flex items-center hover:opacity-90 transition pl-2 md:pl-5">
                 <Image src="/icons/bterra.png" alt="TerraSeg" width={90} height={36} className="block dark:hidden" />

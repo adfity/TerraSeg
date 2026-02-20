@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import analysis_views
 from . import kesehatan_views
+from core import pangan_views
 
 urlpatterns = [
     # ============ AI DETECTION & FEATURES ============
@@ -31,4 +32,11 @@ urlpatterns = [
     path('health-analysis/list/', kesehatan_views.get_health_analysis_list, name='get-health-analysis-list'),
     path('health-analysis/<str:analysis_id>/', kesehatan_views.get_health_analysis_detail, name='get-health-analysis-detail'),
     path('health-analysis/<str:analysis_id>/delete/', kesehatan_views.delete_health_analysis, name='delete-health-analysis'),
+
+    # ============ FOOD SECURITY ANALYSIS (BPS API - KETAHANAN PANGAN) ============
+    path('analyze-food-security-bps/', pangan_views.analyze_food_security_bps, name='analyze-food-security-bps'),
+    path('save-food-security-analysis/', pangan_views.save_food_security_analysis, name='save-food-security-analysis'),
+    path('food-security-analysis/list/', pangan_views.get_food_security_analysis_list, name='get-food-security-analysis-list'),
+    path('food-security-analysis/<str:analysis_id>/', pangan_views.get_food_security_analysis_detail, name='get-food-security-analysis-detail'),
+    path('food-security-analysis/<str:analysis_id>/delete/', pangan_views.delete_food_security_analysis, name='delete-food-security-analysis'),
 ]
